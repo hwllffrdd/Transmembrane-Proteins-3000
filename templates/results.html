@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Uniprot Transmembrane Helix Fetcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Results for query: {{ query }}</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Protein Name</th>
+                    <th>Accession</th>
+                    <th>UniProt Transmembrane Features</th>
+                    <th>Phobius Transmembrane Features</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result.name }}</td>
+                    <td>{{ result.accession }}</td>
+                    <td>{{ result.feature_info }}</td>
+                    <td>{{ result.phobius_feature_info }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    <a href="{{ url_for('index') }}">New Search</a>
+</body>
+</html>
