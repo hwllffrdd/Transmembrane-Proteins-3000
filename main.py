@@ -56,10 +56,6 @@ def get_uniprot_data(query):
     return results
 
 
-import pandas as pd
-import re
-
-
 def process_tm_string(tm_string):
     # Split the string by 'i' and 'o'
     parts = re.split('[io]', tm_string)
@@ -82,7 +78,6 @@ def get_csv_data():
     processed_data = []
     for _, row in df.iterrows():
         accession = row['Accession']
-        tm_count = row['TM domains']
         signal_peptide = 'Yes' if row['Signal peptide'] == 'Y' else 'No'
 
         tm_regions = process_tm_string(row['TM string'])
