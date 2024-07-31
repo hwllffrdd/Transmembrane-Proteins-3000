@@ -14,6 +14,7 @@
                     <th>Accession</th>
                     <th>UniProt Transmembrane Features</th>
                     <th>Phobius Transmembrane Features</th>
+                    <th>DeepTMHMM Transmembrane Features</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,7 +23,8 @@
                     <td>{{ result.name }}</td>
                     <td>{{ result.accession }}</td>
                     <td>{{ result.feature_info }}</td>
-                    <td>{{ result.phobius_feature_info }}</td>
+                    <td>{{ result.csv_feature_info }}</td>
+                    <td>{{ result.tsv_feature_info }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
