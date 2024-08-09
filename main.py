@@ -7,7 +7,7 @@ import re
 def get_uniprot_data(query):
     organism_id = "9606"
     reviewed = "true"
-    query_string = f"((organism_id:{organism_id}) AND (reviewed:{reviewed}) AND (protein_name:{query}))"
+    query_string = f"((organism_id:{organism_id}) AND (reviewed:{reviewed}) AND ({query}))"
     parameters = {
         "format": "json",
         "query": query_string
@@ -20,20 +20,27 @@ def get_uniprot_data(query):
 
     for result in data["results"]:
         protein_name = "Unknown"
+        gene_name = "Unknown"
+        primary_accession = result.get("primaryAccession", "N/A")
+
+        # Get protein name
         if "proteinDescription" in result and "recommendedName" in result["proteinDescription"]:
             recommended_name = result["proteinDescription"]["recommendedName"]
             if "fullName" in recommended_name and "value" in recommended_name["fullName"]:
                 protein_name = recommended_name["fullName"]["value"]
 
-                # Only process this result if the query is in the recommended name
-                if query.lower() not in protein_name.lower():
-                    continue
+        # Get gene name
+        if "genes" in result and result["genes"]:
+            for gene in result["genes"]:
+                if "geneName" in gene:
+                    gene_name = gene["geneName"].get("value", "Unknown")
+                    break  # Take the first gene name found
 
         transmembrane_helical_features = []
         if "features" in result:
             for feature in result["features"]:
                 if (feature.get("type") == "Transmembrane" and
-                        feature.get("description").startswith("Helical")):
+                        feature.get("description", "").startswith("Helical")):
                     start = feature["location"]["start"]["value"]
                     end = feature["location"]["end"]["value"]
                     transmembrane_helical_features.append((start, end))
@@ -47,14 +54,18 @@ def get_uniprot_data(query):
             feature_info = f"{len(transmembrane_helical_features)} transmembrane helical regions: "
             feature_info += ", ".join([f"{start}-{end}" for start, end in transmembrane_helical_features])
 
-        results.append({
-            "name": protein_name,
-            "accession": result.get("primaryAccession", "N/A"),
-            "feature_info": feature_info
-        })
+        # Check for matches: exact for gene name and accession, partial for protein name
+        if (query.lower() in protein_name.lower() or
+            query.lower() == gene_name.lower() or
+            query.lower() == primary_accession.lower()):
+            results.append({
+                "name": protein_name,
+                "gene_name": gene_name,
+                "accession": primary_accession,
+                "feature_info": feature_info
+            })
 
     return results
-
 
 def process_tm_string(tm_string):
     # Split the string by 'i' and 'o'
