@@ -33,7 +33,7 @@ def get_uniprot_data(query):
         if "features" in result:
             for feature in result["features"]:
                 if (feature.get("type") == "Transmembrane" and
-                        feature.get("description") == "Helical"):
+                        feature.get("description").startswith("Helical")):
                     start = feature["location"]["start"]["value"]
                     end = feature["location"]["end"]["value"]
                     transmembrane_helical_features.append((start, end))
