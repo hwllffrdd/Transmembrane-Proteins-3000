@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Uniprot Transmembrane Helix Fetcher</title>
+    <title>Transmembrane Proteins 3000</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
@@ -11,20 +11,24 @@
             <thead>
                 <tr>
                     <th>Protein Name</th>
+                    <th>Gene Name</th>
                     <th>Accession</th>
                     <th>UniProt Transmembrane Features</th>
                     <th>Phobius Transmembrane Features</th>
                     <th>DeepTMHMM Transmembrane Features</th>
+                    <th>Protter visualization</th>
                 </tr>
             </thead>
             <tbody>
                 {% for result in results %}
                 <tr>
-                    <td>{{ result.name }}</td>
-                    <td>{{ result.accession }}</td>
+                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry">{{ result.name }}</a></td>
+                    <td>{{ result.gene_name }}</td>
+                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry">{{ result.accession }}</a></td>
                     <td>{{ result.feature_info }}</td>
-                    <td>{{ result.csv_feature_info }}</td>
-                    <td>{{ result.tsv_feature_info }}</td>
+                    <td>{{ result.phobius_feature_info }}</td>
+                    <td>{{ result.deeptmhmm_feature_info }}</td>
+                    <td><a href="https://wlab.ethz.ch/protter/#up={{ result.accession }}&tm=auto&mc=lightsalmon&lc=blue&tml=numcount&numbers&format=svg">link</a></td>
                 </tr>
                 {% endfor %}
             </tbody>

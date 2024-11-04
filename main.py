@@ -51,7 +51,7 @@ def get_uniprot_data(query):
         elif not transmembrane_helical_features:
             feature_info = "0 transmembrane helical regions"
         else:
-            feature_info = f"{len(transmembrane_helical_features)} transmembrane helical regions: "
+            feature_info = f"{len(transmembrane_helical_features)} transmembrane helical region{'s' if len(transmembrane_helical_features) != 1 else ''}: "
             feature_info += ", ".join([f"{start}-{end}" for start, end in transmembrane_helical_features])
 
         # Check for matches: exact for gene name and accession, partial for protein name
@@ -183,8 +183,8 @@ def index():
             combined_item = uniprot_item.copy()
             accession = uniprot_item['accession']
             csv_item = csv_dict.get(accession)
-            combined_item['csv_feature_info'] = csv_item['feature_info'] if csv_item else 'No data'
-            combined_item['tsv_feature_info'] = tsv_results.get(accession, 'No data')
+            combined_item['phobius_feature_info'] = csv_item['feature_info'] if csv_item else 'No data'
+            combined_item['deeptmhmm_feature_info'] = tsv_results.get(accession, 'No data')
             combined_results.append(combined_item)
         return render_template('results.html', results=combined_results, query=query)
     return render_template('index.html')
