@@ -28,6 +28,11 @@ def get_uniprot_data(query):
             recommended_name = result["proteinDescription"]["recommendedName"]
             if "fullName" in recommended_name and "value" in recommended_name["fullName"]:
                 protein_name = recommended_name["fullName"]["value"]
+        
+        # Get protein sequence length
+        sequence_length = 0
+        if "sequence" in result and "length" in result["sequence"]:
+            sequence_length = result["sequence"]["length"]
 
         # Get gene name
         if "genes" in result and result["genes"]:
@@ -62,7 +67,9 @@ def get_uniprot_data(query):
                 "name": protein_name,
                 "gene_name": gene_name,
                 "accession": primary_accession,
-                "feature_info": feature_info
+                "feature_info": feature_info,
+                "sequence_length": sequence_length,
+                "transmembrane_regions": transmembrane_helical_features
             })
 
     return results
@@ -78,7 +85,8 @@ def process_tm_string(tm_string):
             region = part.split('/')[-1]
             # Only add if it contains a '-'
             if '-' in region:
-                tm_regions.append(region)
+                start, end = map(int, region.split('-'))
+                tm_regions.append((start, end))
     return tm_regions
 
 
@@ -94,15 +102,17 @@ def get_csv_data():
         tm_regions = process_tm_string(row['TM string'])
 
         feature_info = f"{len(tm_regions)} transmembrane helical region{'s' if len(tm_regions) != 1 else ''}"
-        if signal_peptide == 'Yes':
-            feature_info += " (with a signal peptide)"
+        # uncomment the following if you want to report on signal peptides
+        # if signal_peptide == 'Yes':
+        #    feature_info += " (with a signal peptide)"
         if tm_regions:
-            feature_info += ": " + ", ".join(tm_regions)
+            feature_info += ": " + ", ".join([f"{start}-{end}" for start, end in tm_regions])
 
         processed_data.append({
             'accession': accession,
             'feature_info': feature_info,
-            'data_source': 'CSV'
+            'data_source': 'CSV',
+            'tm_regions': tm_regions
         })
 
     return processed_data
@@ -144,11 +154,13 @@ def parse_tsv_data(file_path):
 
 def get_tsv_data():
     tsv_data = parse_tsv_data('deeptmhmm.tsv')
-    return format_tsv_results(tsv_data)
+    formatted_results, regions_dict = format_tsv_results(tsv_data)
+    return formatted_results, regions_dict
 
 
 def format_tsv_results(tsv_data):
     formatted_results = {}
+    regions_dict = {}
     for accession, data in tsv_data.items():
         tm_count = data['tm_count']
         tm_regions = data['tm_regions']
@@ -158,13 +170,23 @@ def format_tsv_results(tsv_data):
             feature_info = "0 transmembrane helical regions"
         else:
             feature_info = f"{tm_count} transmembrane helical region{'s' if tm_count > 1 else ''}"
-            if has_signal:
-                feature_info += " (with a signal peptide)"
+            # uncomment the following if you want to report on signal peptides
+            #if has_signal:
+            #    feature_info += " (with a signal peptide)"
             feature_info += ": " + ", ".join(tm_regions)
 
         formatted_results[accession] = feature_info
+        
+        # Convert tm_regions to list of tuples (start, end)
+        parsed_regions = []
+        for region in tm_regions:
+            if '-' in region:
+                start, end = map(int, region.split('-'))
+                parsed_regions.append((start, end))
+        
+        regions_dict[accession] = parsed_regions
 
-    return formatted_results
+    return formatted_results, regions_dict
 
 
 app = Flask(__name__)
@@ -175,7 +197,7 @@ def index():
         query = request.form['query']
         uniprot_results = get_uniprot_data(query)
         csv_results = get_csv_data()
-        tsv_results = get_tsv_data()
+        tsv_results, tsv_regions = get_tsv_data()
         csv_dict = {item['accession']: item for item in csv_results}
 
         combined_results = []
@@ -184,7 +206,9 @@ def index():
             accession = uniprot_item['accession']
             csv_item = csv_dict.get(accession)
             combined_item['phobius_feature_info'] = csv_item['feature_info'] if csv_item else 'No data'
+            combined_item['phobius_regions'] = csv_item['tm_regions'] if csv_item else []
             combined_item['deeptmhmm_feature_info'] = tsv_results.get(accession, 'No data')
+            combined_item['deeptmhmm_regions'] = tsv_regions.get(accession, [])
             combined_results.append(combined_item)
         return render_template('results.html', results=combined_results, query=query)
     return render_template('index.html')

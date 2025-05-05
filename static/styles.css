@@ -22,3 +22,93 @@ th {
 form {
     margin-bottom: 20px;
 }
+
+/* Styles for protein visualization */
+.protein-visualization {
+    width: 100%;
+    padding: 10px 0;
+}
+
+.protein-bar {
+    position: relative;
+    height: 25px;
+    background-color: #f0f0f0;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
+}
+
+.region-label {
+    font-size: 12px;
+    margin-bottom: 3px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.region-label::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+    border-radius: 2px;
+}
+
+.uniprot-label::before {
+    background-color: #3498db;
+}
+
+.phobius-label::before {
+    background-color: #e74c3c;
+}
+
+.deeptmhmm-label::before {
+    background-color: #2ecc71;
+}
+
+.tm-region {
+    position: absolute;
+    height: 100%;
+    background-color: #3498db;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.tm-region:hover {
+    transform: scaleY(1.1);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    z-index: 1;
+}
+
+.uniprot-region {
+    background-color: #3498db;
+}
+
+.phobius-region {
+    background-color: #e74c3c;
+}
+
+.deeptmhmm-region {
+    background-color: #2ecc71;
+}
+
+
+
+.visualizer-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.visualizer-row {
+    border-top: 1px solid #ddd;
+    padding-top: 15px;
+}
+
+.sequence-info {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+}
