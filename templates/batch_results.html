@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Batch Results - Transmembrane Proteins 3000</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Transmembrane Proteins 3000 - Batch Results</h1>
+    
+    <div class="batch-results-container">
+        <div class="summary">
+            <p>Processed {{ total_accessions }} accession{{ "s" if total_accessions != 1 else "" }}, found {{ results|length }} result{{ "s" if results|length != 1 else "" }}.</p>
+            
+            {% if not_found_accessions %}
+            <div class="not-found">
+                <h3>Accessions not found:</h3>
+                <p>{{ not_found_accessions|join(", ") }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="export-options">
+                <a href="{{ url_for('export_batch', batch_id=batch_id, format='csv') }}" class="export-button">
+                    <button>Export as CSV</button>
+                </a>
+                <a href="{{ url_for('export_batch', batch_id=batch_id, format='tsv') }}" class="export-button">
+                    <button>Export as TSV</button>
+                </a>
+            </div>
+        </div>
+        
+        <table class="batch-results-table">
+            <thead>
+                <tr>
+                    <th>Protein Name</th>
+                    <th>Gene Name</th>
+                    <th>Accession</th>
+                    <th>
+                        UniProt Transmembrane Features
+                        <div class="sub-header">Count</div>
+                    </th>
+                    <th>
+                        UniProt Transmembrane Features
+                        <div class="sub-header">Regions</div>
+                    </th>
+                    <th>
+                        Phobius Transmembrane Features
+                        <div class="sub-header">Count</div>
+                    </th>
+                    <th>
+                        Phobius Transmembrane Features
+                        <div class="sub-header">Regions</div>
+                    </th>
+                    <th>
+                        DeepTMHMM Transmembrane Features
+                        <div class="sub-header">Count</div>
+                    </th>
+                    <th>
+                        DeepTMHMM Transmembrane Features
+                        <div class="sub-header">Regions</div>
+                    </th>
+                    <th>
+                        TMBED Transmembrane Features
+                        <div class="sub-header">Count</div>
+                    </th>
+                    <th>
+                        TMBED Transmembrane Features
+                        <div class="sub-header">Regions</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry" target="_blank">{{ result.name }}</a></td>
+                    <td>{{ result.gene_name }}</td>
+                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry" target="_blank">{{ result.accession }}</a></td>
+
+                    <td>{{ result.uniprot_count }}</td>
+                    <td>{{ result.uniprot_regions }}</td>
+
+                    <td>{{ result.phobius_count }}</td>
+                    <td>{{ result.phobius_regions }}</td>
+
+                    <td>{{ result.deeptmhmm_count }}</td>
+                    <td>{{ result.deeptmhmm_regions }}</td>
+
+                    <td>{{ result.tmbed_count }}</td>
+                    <td>{{ result.tmbed_regions }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="navigation">
+            <a href="{{ url_for('index') }}">
+                <button>Back to Search</button>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

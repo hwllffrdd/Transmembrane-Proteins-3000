@@ -3,13 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <title>Transmembrane Proteins 3000</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"></head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
 <body>
     <h1>Transmembrane Proteins 3000</h1>
-    <form method="POST">
-        <label for="query">Enter your query (protein name, e.g. 'neural cell adhesion molecule'):</label>
-        <input type="text" id="query" name="query" required>
-        <button type="submit">Search</button>
-    </form>
+    
+    <div class="search-tabs">
+        <button class="tab-button active" onclick="openTab('single-search')">Single Search</button>
+        <button class="tab-button" onclick="openTab('batch-search')">Batch Search</button>
+    </div>
+    
+    <div id="single-search" class="tab-content active">
+        <h2>Search by Protein Name, Gene, or Accession</h2>
+        <form method="POST" action="/">
+            <label for="query">Enter your query (e.g. 'neural cell adhesion molecule'):</label>
+            <input type="text" id="query" name="query" required>
+            <input type="hidden" name="search_type" value="single">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+    
+    <div id="batch-search" class="tab-content">
+        <h2>Batch Search by Accessions</h2>
+        <form method="POST" action="/batch">
+            <label for="batch_query">Enter UniProt accessions (space or line separated):</label>
+            <textarea id="batch_query" name="batch_query" rows="6" required></textarea>
+            <input type="hidden" name="search_type" value="batch">
+            <button type="submit">Process Batch</button>
+        </form>
+    </div>
+    
+    <script>
+    function openTab(tabName) {
+        // Hide all tab contents
+        var tabContents = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove("active");
+        }
+        
+        // Remove active class from all tab buttons
+        var tabButtons = document.getElementsByClassName("tab-button");
+        for (var i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].classList.remove("active");
+        }
+        
+        // Show the selected tab content and mark the button as active
+        document.getElementById(tabName).classList.add("active");
+        event.currentTarget.classList.add("active");
+    }
+    </script>
 </body>
 </html>

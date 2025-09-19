@@ -24,6 +24,7 @@
                     <th>UniProt Transmembrane Features</th>
                     <th>Phobius Transmembrane Features</th>
                     <th>DeepTMHMM Transmembrane Features</th>
+                    <th>TMBED Transmembrane Features</th>
                     <th>Protter visualization</th>
                 </tr>
             </thead>
@@ -36,45 +37,57 @@
                     <td>{{ result.feature_info }}</td>
                     <td>{{ result.phobius_feature_info }}</td>
                     <td>{{ result.deeptmhmm_feature_info }}</td>
+                    <td>{{ result.tmbed_feature_info }}</td>
                     <td><a href="https://wlab.ethz.ch/protter/#up={{ result.accession }}&tm=auto&mc=lightsalmon&lc=blue&tml=numcount&numbers&format=svg">link</a></td>
                 </tr>
                 <tr class="visualizer-row">
-                    <td colspan="7">
+                    <td colspan="8">
                         <div class="protein-visualization">
                             <div class="visualizer-title">Visualization of Transmembrane Domains:</div>
                             <div class="sequence-info">Protein length: {{ result.sequence_length }} amino acids</div>
-                            
+
                             <!-- UniProt visualization -->
                             <div class="region-label uniprot-label">UniProt</div>
                             <div class="protein-bar">
                                 {% for region in result.transmembrane_regions %}
-                                    <div class="tm-region uniprot-region" 
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%; 
+                                    <div class="tm-region uniprot-region"
+                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
                                                 width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
                                          title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
                                     </div>
                                 {% endfor %}
-
                             </div>
-                            
+
                             <!-- Phobius visualization -->
                             <div class="region-label phobius-label">Phobius</div>
                             <div class="protein-bar">
                                 {% for region in result.phobius_regions %}
-                                    <div class="tm-region phobius-region" 
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%; 
+                                    <div class="tm-region phobius-region"
+                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
                                                 width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
                                          title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
                                     </div>
                                 {% endfor %}
                             </div>
-                            
+
                             <!-- DeepTMHMM visualization -->
                             <div class="region-label deeptmhmm-label">DeepTMHMM</div>
                             <div class="protein-bar">
                                 {% for region in result.deeptmhmm_regions %}
-                                    <div class="tm-region deeptmhmm-region" 
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%; 
+                                    <div class="tm-region deeptmhmm-region"
+                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
+                                                width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
+                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- TMBED visualization -->
+                            <div class="region-label tmbed-label">TMBED</div>
+                            <div class="protein-bar">
+                                {% for region in result.tmbed_regions %}
+                                    <div class="tm-region tmbed-region"
+                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
                                                 width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
                                          title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
                                     </div>
