@@ -167,6 +167,7 @@ label {
     font-weight: bold;
     display: flex;
     align-items: center;
+    color: #34495e;
 }
 
 .region-label::before {
@@ -176,6 +177,7 @@ label {
     height: 12px;
     margin-right: 5px;
     border-radius: 2px;
+    border: 1px solid rgba(0,0,0,0.1);
 }
 
 .uniprot-label::before {
@@ -191,13 +193,16 @@ label {
 }
 
 .tmbed-label::before {
-    background-color: #9b59b6; /* Purple for TMBED */
+    background-color: #9b59b6;
+}
+
+.topcons-label::before {
+    background-color: #f39c12;
 }
 
 .tm-region {
     position: absolute;
     height: 100%;
-    background-color: #3498db;
     border-radius: 3px;
     transition: all 0.2s ease;
     cursor: pointer;
@@ -223,6 +228,10 @@ label {
 
 .tmbed-region {
     background-color: #9b59b6;
+}
+
+.topcons-region {
+    background-color: #f39c12;
 }
 
 .visualizer-title {
@@ -293,7 +302,6 @@ label {
 .tm-region {
     position: absolute;
     height: 100%;
-    background-color: #3498db;
     border-radius: 3px;
     transition: all 0.2s ease;
     cursor: pointer;
@@ -318,6 +326,14 @@ label {
     background-color: #2ecc71;
 }
 
+.tmbed-region {
+    background-color: #9b59b6;
+}
+
+.topcons-region {
+    background-color: #f39c12;
+}
+
 /* TMBED-specific styling */
 .tmbed-label::before {
     background-color: #9b59b6; /* Purple color for TMBED */
@@ -329,7 +345,9 @@ label {
 
 .visualizer-title {
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
+    color: #2c3e50;
+    font-size: 14px;
 }
 
 .visualizer-row {
@@ -340,7 +358,7 @@ label {
 .sequence-info {
     font-size: 11px;
     color: #666;
-    margin-top: 2px;
+    margin-top: 15px;
 }
 
 .prediction-legend {

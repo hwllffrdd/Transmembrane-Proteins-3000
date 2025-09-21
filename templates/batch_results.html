@@ -67,6 +67,14 @@
                         TMBED Transmembrane Features
                         <div class="sub-header">Regions</div>
                     </th>
+                    <th>
+                        TOPCONS Transmembrane Features
+                        <div class="sub-header">Count</div>
+                    </th>
+                    <th>
+                        TOPCONS Transmembrane Features
+                        <div class="sub-header">Regions</div>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -87,6 +95,9 @@
 
                     <td>{{ result.tmbed_count }}</td>
                     <td>{{ result.tmbed_regions }}</td>
+
+                    <td>{{ result.topcons_count }}</td>
+                    <td>{{ result.topcons_regions }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -353,7 +353,170 @@ def get_tmbed_data(accessions=None):
 
     return formatted_results, regions_dict
 
+def parse_topcons_data(file_path, accessions=None):
+    """Parse TOPCONS prediction file and extract transmembrane regions"""
+    results = {}
+    current_accession = None
 
+    with open(file_path, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith('>'):
+                # Parse FASTA header to extract accession
+                # Format: >sp|ACCESSION|PROTEIN_NAME ...
+                parts = line.split('|')
+                if len(parts) >= 2:
+                    current_accession = parts[1]
+                    # Skip if not in requested accessions
+                    if accessions and current_accession not in accessions:
+                        current_accession = None
+                        continue
+                    results[current_accession] = {
+                        'tm_regions': [],
+                        'signal_regions': [],
+                        'sequence_length': 0
+                    }
+                else:
+                    current_accession = None
+            elif current_accession and line:
+                # Process prediction string
+                sequence_length = len(line)
+                results[current_accession]['sequence_length'] = sequence_length
+
+                # Find transmembrane regions (M)
+                tm_regions = []
+                signal_regions = []
+
+                i = 0
+                while i < len(line):
+                    char = line[i]
+
+                    if char == 'M':
+                        # Start of transmembrane region
+                        start = i + 1  # 1-based indexing
+                        while i < len(line) and line[i] == 'M':
+                            i += 1
+                        end = i  # 1-based indexing
+                        tm_regions.append((start, end))
+
+                    elif char == 'S':
+                        # Start of signal peptide region
+                        start = i + 1
+                        while i < len(line) and line[i] == 'S':
+                            i += 1
+                        end = i
+                        signal_regions.append((start, end))
+
+                    else:
+                        i += 1
+
+                results[current_accession]['tm_regions'] = tm_regions
+                results[current_accession]['signal_regions'] = signal_regions
+
+    return results
+
+
+def get_topcons_data(accessions=None):
+    """Get TOPCONS data and format it for display"""
+    topcons_data = parse_topcons_data('topcons_combined.txt', accessions)
+    formatted_results = {}
+    regions_dict = {}
+
+    for accession, data in topcons_data.items():
+        tm_regions = data['tm_regions']
+        tm_count = len(tm_regions)
+
+        if tm_count == 0:
+            feature_info = "0 transmembrane helical regions"
+        else:
+            regions_str = ", ".join([f"{start}-{end}" for start, end in tm_regions])
+            feature_info = f"{tm_count} transmembrane helical region{'s' if tm_count > 1 else ''}: {regions_str}"
+
+        formatted_results[accession] = feature_info
+        regions_dict[accession] = tm_regions
+
+    return formatted_results, regions_dict
+
+
+# Updated process_batch_query function
+def process_batch_query(batch_accessions):
+    """Process a batch of accessions and return the combined results"""
+    # Clean and deduplicate accessions
+    accessions = [acc.strip() for acc in batch_accessions if acc.strip()]
+    accessions = list(set(accessions))  # Remove duplicates
+
+    # Get UniProt data
+    uniprot_results, not_found_accessions = get_batch_uniprot_data(accessions)
+
+    # Create map of accession to UniProt result for easy lookup
+    uniprot_map = {result['accession']: result for result in uniprot_results}
+
+    # Get Phobius data for these accessions
+    csv_results = get_csv_data(accessions)
+    csv_dict = {item['accession']: item for item in csv_results}
+
+    # Get DeepTMHMM data for these accessions
+    tsv_results, tsv_regions = get_tsv_data(accessions)
+
+    # Get TMBED data for these accessions
+    tmbed_results, tmbed_regions = get_tmbed_data(accessions)
+
+    # Get TOPCONS data for these accessions
+    topcons_results, topcons_regions = get_topcons_data(accessions)
+
+    # Create the combined results
+    combined_results = []
+
+    # Start with all accessions found in UniProt
+    for uniprot_item in uniprot_results:
+        accession = uniprot_item['accession']
+
+        # Get Phobius data
+        phobius_item = csv_dict.get(accession, None)
+        phobius_feature_info = 'No data'
+        phobius_count = 0
+        phobius_regions = ''
+        if phobius_item:
+            phobius_feature_info = phobius_item['feature_info']
+            phobius_count = phobius_item['count']
+            phobius_regions = phobius_item['regions']
+
+        # Get DeepTMHMM data
+        deeptmhmm_feature_info = tsv_results.get(accession, 'No data')
+        deeptmhmm_regions = tsv_regions.get(accession, [])
+        deeptmhmm_count = len(deeptmhmm_regions)
+        deeptmhmm_regions_str = ', '.join([f"{start}-{end}" for start, end in deeptmhmm_regions])
+
+        # Get TMBED data
+        tmbed_feature_info = tmbed_results.get(accession, 'No data')
+        tmbed_regions_list = tmbed_regions.get(accession, [])
+        tmbed_count = len(tmbed_regions_list)
+        tmbed_regions_str = ', '.join([f"{start}-{end}" for start, end in tmbed_regions_list])
+
+        # Get TOPCONS data
+        topcons_feature_info = topcons_results.get(accession, 'No data')
+        topcons_regions_list = topcons_regions.get(accession, [])
+        topcons_count = len(topcons_regions_list)
+        topcons_regions_str = ', '.join([f"{start}-{end}" for start, end in topcons_regions_list])
+
+        # Add to combined results
+        combined_results.append({
+            'name': uniprot_item['name'],
+            'gene_name': uniprot_item['gene_name'],
+            'accession': accession,
+            'uniprot_count': uniprot_item['uniprot_count'],
+            'uniprot_regions': uniprot_item['uniprot_regions'],
+            'phobius_count': phobius_count,
+            'phobius_regions': phobius_regions,
+            'deeptmhmm_count': deeptmhmm_count,
+            'deeptmhmm_regions': deeptmhmm_regions_str,
+            'tmbed_count': tmbed_count,
+            'tmbed_regions': tmbed_regions_str,
+            'topcons_count': topcons_count,
+            'topcons_regions': topcons_regions_str
+        })
+
+    return combined_results, not_found_accessions, len(accessions)
 
 def process_batch_query(batch_accessions):
     """Process a batch of accessions and return the combined results"""
@@ -437,7 +600,8 @@ def export_to_csv(results, format='csv'):
         'UniProt TM Count', 'UniProt TM Regions',
         'Phobius TM Count', 'Phobius TM Regions',
         'DeepTMHMM TM Count', 'DeepTMHMM TM Regions',
-        'TMBED TM Count', 'TMBED TM Regions'
+        'TMBED TM Count', 'TMBED TM Regions',
+        'TOPCONS TM Count', 'TOPCONS TM Regions'
     ]
     writer.writerow(header)
     
@@ -448,7 +612,8 @@ def export_to_csv(results, format='csv'):
             item['uniprot_count'], item['uniprot_regions'],
             item['phobius_count'], item['phobius_regions'],
             item['deeptmhmm_count'], item['deeptmhmm_regions'],
-            item.get('tmbed_count', 0), item.get('tmbed_regions', '')
+            item.get('tmbed_count', 0), item.get('tmbed_regions', ''),
+            item.get('topcons_count', 0), item.get('topcons_regions', '')
         ]
         writer.writerow(row)
     
@@ -472,6 +637,7 @@ def index():
         csv_results = get_csv_data()
         tsv_results, tsv_regions = get_tsv_data()
         tmbed_results, tmbed_regions = get_tmbed_data()
+        topcons_results, topcons_regions = get_topcons_data()
         csv_dict = {item['accession']: item for item in csv_results}
 
         combined_results = []
@@ -485,6 +651,8 @@ def index():
             combined_item['deeptmhmm_regions'] = tsv_regions.get(accession, [])
             combined_item['tmbed_feature_info'] = tmbed_results.get(accession, 'No data')
             combined_item['tmbed_regions'] = tmbed_regions.get(accession, [])
+            combined_item['topcons_feature_info'] = topcons_results.get(accession, 'No data')
+            combined_item['topcons_regions'] = topcons_regions.get(accession, [])
             combined_results.append(combined_item)
         return render_template('results.html', results=combined_results, query=query)
     return render_template('index.html')
