@@ -75,8 +75,10 @@ def get_uniprot_data(query, is_accession=False):
         elif not transmembrane_helical_features:
             feature_info = "0 transmembrane helical regions"
         else:
+            tm_percentage = calculate_tm_percentage(transmembrane_helical_features, sequence_length)
             feature_info = f"{len(transmembrane_helical_features)} transmembrane helical region{'s' if len(transmembrane_helical_features) != 1 else ''}: "
             feature_info += ", ".join([f"{start}-{end}" for start, end in transmembrane_helical_features])
+            feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         if is_accession or (query.lower() in protein_name.lower() or
             query.lower() == gene_name.lower() or
@@ -134,6 +136,15 @@ def get_batch_uniprot_data(accessions):
     
     return results, not_found
 
+def calculate_tm_percentage(tm_regions, sequence_length):
+    """Calculate what percentage of the sequence the TM regions comprise"""
+    if not tm_regions or sequence_length == 0:
+        return 0.0
+    
+    total_tm_residues = sum(end - start + 1 for start, end in tm_regions)
+    percentage = (total_tm_residues / sequence_length) * 100
+    return percentage
+
 def process_tm_string(tm_string):
     # Split the string by 'i' and 'o'
     parts = re.split('[io]', tm_string)
@@ -150,7 +161,7 @@ def process_tm_string(tm_string):
     return tm_regions
 
 
-def get_csv_data(accessions=None):
+def get_csv_data(accessions=None, sequence_length_dict=None):
     # Read the CSV file
     df = pd.read_csv('phobius.csv', sep=';')
     
@@ -175,6 +186,11 @@ def get_csv_data(accessions=None):
         #    feature_info += " (with a signal peptide)"
         if tm_regions:
             feature_info += ": " + regions_str
+            # Add percentage if sequence length is available
+            if sequence_length_dict and accession in sequence_length_dict:
+                seq_len = sequence_length_dict[accession]
+                tm_percentage = calculate_tm_percentage(tm_regions, seq_len)
+                feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         processed_data.append({
             'accession': accession,
@@ -231,13 +247,13 @@ def parse_tsv_data(file_path, accessions=None):
     return results
 
 
-def get_tsv_data(accessions=None):
+def get_tsv_data(accessions=None, sequence_length_dict=None):
     tsv_data = parse_tsv_data('deeptmhmm.tsv', accessions)
-    formatted_results, regions_dict = format_tsv_results(tsv_data)
+    formatted_results, regions_dict = format_tsv_results(tsv_data, sequence_length_dict)
     return formatted_results, regions_dict
 
 
-def format_tsv_results(tsv_data):
+def format_tsv_results(tsv_data, sequence_length_dict=None):
     formatted_results = {}
     regions_dict = {}
     for accession, data in tsv_data.items():
@@ -262,6 +278,11 @@ def format_tsv_results(tsv_data):
             # if has_signal:
             #    feature_info += " (with a signal peptide)"
             feature_info += ": " + ", ".join(tm_regions)
+            # Add percentage if sequence length is available
+            if sequence_length_dict and accession in sequence_length_dict:
+                seq_len = sequence_length_dict[accession]
+                tm_percentage = calculate_tm_percentage(parsed_regions, seq_len)
+                feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
         regions_dict[accession] = parsed_regions
@@ -341,12 +362,16 @@ def get_tmbed_data(accessions=None):
     for accession, data in tmbed_data.items():
         tm_regions = data['tm_regions']
         tm_count = len(tm_regions)
+        sequence_length = data.get('sequence_length', 0)
 
         if tm_count == 0:
             feature_info = "0 transmembrane helical regions"
         else:
             regions_str = ", ".join([f"{start}-{end}" for start, end in tm_regions])
             feature_info = f"{tm_count} transmembrane helical region{'s' if tm_count > 1 else ''}: {regions_str}"
+            if sequence_length > 0:
+                tm_percentage = calculate_tm_percentage(tm_regions, sequence_length)
+                feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
         regions_dict[accession] = tm_regions
@@ -425,12 +450,16 @@ def get_topcons_data(accessions=None):
     for accession, data in topcons_data.items():
         tm_regions = data['tm_regions']
         tm_count = len(tm_regions)
+        sequence_length = data.get('sequence_length', 0)
 
         if tm_count == 0:
             feature_info = "0 transmembrane helical regions"
         else:
             regions_str = ", ".join([f"{start}-{end}" for start, end in tm_regions])
             feature_info = f"{tm_count} transmembrane helical region{'s' if tm_count > 1 else ''}: {regions_str}"
+            if sequence_length > 0:
+                tm_percentage = calculate_tm_percentage(tm_regions, sequence_length)
+                feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
         regions_dict[accession] = tm_regions
@@ -450,13 +479,16 @@ def process_batch_query(batch_accessions):
 
     # Create map of accession to UniProt result for easy lookup
     uniprot_map = {result['accession']: result for result in uniprot_results}
+    
+    # Create sequence length dictionary
+    sequence_length_dict = {result['accession']: result['sequence_length'] for result in uniprot_results}
 
     # Get Phobius data for these accessions
-    csv_results = get_csv_data(accessions)
+    csv_results = get_csv_data(accessions, sequence_length_dict)
     csv_dict = {item['accession']: item for item in csv_results}
 
     # Get DeepTMHMM data for these accessions
-    tsv_results, tsv_regions = get_tsv_data(accessions)
+    tsv_results, tsv_regions = get_tsv_data(accessions, sequence_length_dict)
 
     # Get TMBED data for these accessions
     tmbed_results, tmbed_regions = get_tmbed_data(accessions)
@@ -566,8 +598,12 @@ def index():
         # Regular single search
         query = request.form['query']
         uniprot_results = get_uniprot_data(query)
-        csv_results = get_csv_data()
-        tsv_results, tsv_regions = get_tsv_data()
+        
+        # Create sequence length dictionary from uniprot results
+        sequence_length_dict = {result['accession']: result['sequence_length'] for result in uniprot_results}
+        
+        csv_results = get_csv_data(sequence_length_dict=sequence_length_dict)
+        tsv_results, tsv_regions = get_tsv_data(sequence_length_dict=sequence_length_dict)
         tmbed_results, tmbed_regions = get_tmbed_data()
         topcons_results, topcons_regions = get_topcons_data()
         csv_dict = {item['accession']: item for item in csv_results}
