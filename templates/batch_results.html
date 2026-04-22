@@ -32,49 +32,35 @@
         <table class="batch-results-table">
             <thead>
                 <tr>
-                    <th>Protein Name</th>
-                    <th>Gene Name</th>
-                    <th>Accession</th>
-                    <th>
-                        UniProt Transmembrane Features
-                        <div class="sub-header">Count</div>
-                    </th>
-                    <th>
-                        UniProt Transmembrane Features
-                        <div class="sub-header">Regions</div>
-                    </th>
-                    <th>
-                        Phobius Transmembrane Features
-                        <div class="sub-header">Count</div>
-                    </th>
-                    <th>
-                        Phobius Transmembrane Features
-                        <div class="sub-header">Regions</div>
-                    </th>
-                    <th>
-                        DeepTMHMM Transmembrane Features
-                        <div class="sub-header">Count</div>
-                    </th>
-                    <th>
-                        DeepTMHMM Transmembrane Features
-                        <div class="sub-header">Regions</div>
-                    </th>
-                    <th>
-                        TMBED Transmembrane Features
-                        <div class="sub-header">Count</div>
-                    </th>
-                    <th>
-                        TMBED Transmembrane Features
-                        <div class="sub-header">Regions</div>
-                    </th>
-                    <th>
-                        TOPCONS Transmembrane Features
-                        <div class="sub-header">Count</div>
-                    </th>
-                    <th>
-                        TOPCONS Transmembrane Features
-                        <div class="sub-header">Regions</div>
-                    </th>
+                    <th rowspan="2">Protein Name</th>
+                    <th rowspan="2">Gene Name</th>
+                    <th rowspan="2">Accession</th>
+                    <th colspan="3">UniProt Transmembrane Features</th>
+                    <th colspan="3">Phobius Transmembrane Features</th>
+                    <th colspan="3">DeepTMHMM Transmembrane Features</th>
+                    <th colspan="3">TMBED Transmembrane Features</th>
+                    <th colspan="3">TOPCONS Transmembrane Features</th>
+                </tr>
+                <tr>
+                    <th><div class="sub-header">Count</div></th>
+                    <th><div class="sub-header">Regions</div></th>
+                    <th><div class="sub-header">% of sequence</div></th>
+
+                    <th><div class="sub-header">Count</div></th>
+                    <th><div class="sub-header">Regions</div></th>
+                    <th><div class="sub-header">% of sequence</div></th>
+
+                    <th><div class="sub-header">Count</div></th>
+                    <th><div class="sub-header">Regions</div></th>
+                    <th><div class="sub-header">% of sequence</div></th>
+
+                    <th><div class="sub-header">Count</div></th>
+                    <th><div class="sub-header">Regions</div></th>
+                    <th><div class="sub-header">% of sequence</div></th>
+
+                    <th><div class="sub-header">Count</div></th>
+                    <th><div class="sub-header">Regions</div></th>
+                    <th><div class="sub-header">% of sequence</div></th>
                 </tr>
             </thead>
             <tbody>
@@ -86,18 +72,23 @@
 
                     <td>{{ result.uniprot_count }}</td>
                     <td>{{ result.uniprot_regions }}</td>
+                    <td>{{ result.uniprot_percentage }}</td>
 
                     <td>{{ result.phobius_count }}</td>
                     <td>{{ result.phobius_regions }}</td>
+                    <td>{{ result.phobius_percentage }}</td>
 
                     <td>{{ result.deeptmhmm_count }}</td>
                     <td>{{ result.deeptmhmm_regions }}</td>
+                    <td>{{ result.deeptmhmm_percentage }}</td>
 
                     <td>{{ result.tmbed_count }}</td>
                     <td>{{ result.tmbed_regions }}</td>
+                    <td>{{ result.tmbed_percentage }}</td>
 
                     <td>{{ result.topcons_count }}</td>
                     <td>{{ result.topcons_regions }}</td>
+                    <td>{{ result.topcons_percentage }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

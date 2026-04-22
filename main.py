@@ -502,50 +502,68 @@ def process_batch_query(batch_accessions):
     # Start with all accessions found in UniProt
     for uniprot_item in uniprot_results:
         accession = uniprot_item['accession']
+        seq_len = sequence_length_dict.get(accession, 0)
+
+        # UniProt percentage
+        uniprot_tm_regions = uniprot_item.get('transmembrane_regions', [])
+        uniprot_percentage = f"{calculate_tm_percentage(uniprot_tm_regions, seq_len):.1f}" if uniprot_tm_regions and seq_len else ""
 
         # Get Phobius data
         phobius_item = csv_dict.get(accession, None)
         phobius_feature_info = 'No data'
         phobius_count = 0
         phobius_regions = ''
+        phobius_percentage = ''
         if phobius_item:
             phobius_feature_info = phobius_item['feature_info']
             phobius_count = phobius_item['count']
             phobius_regions = phobius_item['regions']
+            phobius_tm_regions = phobius_item.get('tm_regions', [])
+            if phobius_tm_regions and seq_len:
+                phobius_percentage = f"{calculate_tm_percentage(phobius_tm_regions, seq_len):.1f}"
 
         # Get DeepTMHMM data
         deeptmhmm_feature_info = tsv_results.get(accession, 'No data')
-        deeptmhmm_regions = tsv_regions.get(accession, [])
-        deeptmhmm_count = len(deeptmhmm_regions)
-        deeptmhmm_regions_str = ', '.join([f"{start}-{end}" for start, end in deeptmhmm_regions])
+        deeptmhmm_regions_list = tsv_regions.get(accession, [])
+        deeptmhmm_count = len(deeptmhmm_regions_list)
+        deeptmhmm_regions_str = ', '.join([f"{start}-{end}" for start, end in deeptmhmm_regions_list])
+        deeptmhmm_percentage = f"{calculate_tm_percentage(deeptmhmm_regions_list, seq_len):.1f}" if deeptmhmm_regions_list and seq_len else ""
 
         # Get TMBED data
         tmbed_feature_info = tmbed_results.get(accession, 'No data')
         tmbed_regions_list = tmbed_regions.get(accession, [])
         tmbed_count = len(tmbed_regions_list)
         tmbed_regions_str = ', '.join([f"{start}-{end}" for start, end in tmbed_regions_list])
+        tmbed_percentage = f"{calculate_tm_percentage(tmbed_regions_list, seq_len):.1f}" if tmbed_regions_list and seq_len else ""
 
         # Get TOPCONS data
         topcons_feature_info = topcons_results.get(accession, 'No data')
         topcons_regions_list = topcons_regions.get(accession, [])
         topcons_count = len(topcons_regions_list)
         topcons_regions_str = ', '.join([f"{start}-{end}" for start, end in topcons_regions_list])
+        topcons_percentage = f"{calculate_tm_percentage(topcons_regions_list, seq_len):.1f}" if topcons_regions_list and seq_len else ""
 
         # Add to combined results
         combined_results.append({
             'name': uniprot_item['name'],
             'gene_name': uniprot_item['gene_name'],
             'accession': accession,
+            'sequence_length': seq_len,
             'uniprot_count': uniprot_item['uniprot_count'],
             'uniprot_regions': uniprot_item['uniprot_regions'],
+            'uniprot_percentage': uniprot_percentage,
             'phobius_count': phobius_count,
             'phobius_regions': phobius_regions,
+            'phobius_percentage': phobius_percentage,
             'deeptmhmm_count': deeptmhmm_count,
             'deeptmhmm_regions': deeptmhmm_regions_str,
+            'deeptmhmm_percentage': deeptmhmm_percentage,
             'tmbed_count': tmbed_count,
             'tmbed_regions': tmbed_regions_str,
+            'tmbed_percentage': tmbed_percentage,
             'topcons_count': topcons_count,
-            'topcons_regions': topcons_regions_str
+            'topcons_regions': topcons_regions_str,
+            'topcons_percentage': topcons_percentage,
         })
 
     return combined_results, not_found_accessions, len(accessions)
@@ -561,11 +579,11 @@ def export_to_csv(results, format='csv'):
     # Write header
     header = [
         'Protein Name', 'Gene Name', 'Accession',
-        'UniProt TM Count', 'UniProt TM Regions',
-        'Phobius TM Count', 'Phobius TM Regions',
-        'DeepTMHMM TM Count', 'DeepTMHMM TM Regions',
-        'TMBED TM Count', 'TMBED TM Regions',
-        'TOPCONS TM Count', 'TOPCONS TM Regions'
+        'UniProt TM Count', 'UniProt TM Regions', 'UniProt TM %',
+        'Phobius TM Count', 'Phobius TM Regions', 'Phobius TM %',
+        'DeepTMHMM TM Count', 'DeepTMHMM TM Regions', 'DeepTMHMM TM %',
+        'TMBED TM Count', 'TMBED TM Regions', 'TMBED TM %',
+        'TOPCONS TM Count', 'TOPCONS TM Regions', 'TOPCONS TM %',
     ]
     writer.writerow(header)
     
@@ -573,11 +591,11 @@ def export_to_csv(results, format='csv'):
     for item in results:
         row = [
             item['name'], item['gene_name'], item['accession'],
-            item['uniprot_count'], item['uniprot_regions'],
-            item['phobius_count'], item['phobius_regions'],
-            item['deeptmhmm_count'], item['deeptmhmm_regions'],
-            item.get('tmbed_count', 0), item.get('tmbed_regions', ''),
-            item.get('topcons_count', 0), item.get('topcons_regions', '')
+            item['uniprot_count'], item['uniprot_regions'], item.get('uniprot_percentage', ''),
+            item['phobius_count'], item['phobius_regions'], item.get('phobius_percentage', ''),
+            item['deeptmhmm_count'], item['deeptmhmm_regions'], item.get('deeptmhmm_percentage', ''),
+            item.get('tmbed_count', 0), item.get('tmbed_regions', ''), item.get('tmbed_percentage', ''),
+            item.get('topcons_count', 0), item.get('topcons_regions', ''), item.get('topcons_percentage', ''),
         ]
         writer.writerow(row)
     
