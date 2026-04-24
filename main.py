@@ -733,5 +733,24 @@ def export_batch(batch_id):
         'Content-Disposition': f'attachment; filename="{filename}"'
     }
 
+@app.route('/stats/<batch_id>')
+def batch_stats(batch_id):
+    # Check if batch exists
+    if batch_id not in batch_storage:
+        return redirect(url_for('index'))
+
+    batch_data = batch_storage[batch_id]
+
+    if 'results' not in batch_data or batch_data['status'] != 'completed':
+        return redirect(url_for('batch_results', batch_id=batch_id))
+
+    # Serialize results as JSON for the template
+    results_json = json.dumps(batch_data['results'])
+
+    return render_template('batch_stats.html',
+                           batch_id=batch_id,
+                           total=len(batch_data['results']),
+                           results_json=results_json)
+
 if __name__ == '__main__':
     app.run(debug=True)

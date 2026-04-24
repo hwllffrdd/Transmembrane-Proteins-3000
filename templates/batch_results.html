@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <title>Batch Results - Transmembrane Proteins 3000</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .stats-button {
+            background-color: #8e44ad;
+        }
+        .stats-button:hover {
+            background-color: #7d3c98;
+        }
+    </style>
 </head>
 <body>
     <h1>Transmembrane Proteins 3000 - Batch Results</h1>
@@ -25,6 +33,9 @@
                 </a>
                 <a href="{{ url_for('export_batch', batch_id=batch_id, format='tsv') }}" class="export-button">
                     <button>Export as TSV</button>
+                </a>
+                <a href="{{ url_for('batch_stats', batch_id=batch_id) }}" target="_blank" class="export-button">
+                    <button class="stats-button">Generate statistics</button>
                 </a>
             </div>
         </div>
