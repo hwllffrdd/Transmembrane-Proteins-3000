@@ -11,6 +11,85 @@
         .stats-button:hover {
             background-color: #7d3c98;
         }
+
+        /* Stacked protein identity cell */
+        .protein-identity {
+            min-width: 160px;
+            max-width: 220px;
+            line-height: 1.4;
+        }
+        .prot-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: block;
+        }
+        .prot-gene {
+            font-size: 0.78rem;
+            color: #666;
+            display: block;
+        }
+        .prot-acc {
+            font-size: 0.75rem;
+            color: #999;
+            display: block;
+            font-family: monospace;
+        }
+        .expand-indicator {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 3px;
+            display: block;
+            cursor: pointer;
+        }
+        tr.data-row.open .expand-indicator {
+            color: #3498db;
+        }
+
+        /* Clickable data rows */
+        tr.data-row {
+            cursor: pointer;
+            user-select: none;
+        }
+        tr.data-row:hover td {
+            background-color: #eaf2fb !important;
+        }
+
+        /* Visualiser row: hidden by default */
+        tr.visualizer-row {
+            display: none;
+        }
+        tr.visualizer-row.open {
+            display: table-row;
+        }
+        tr.visualizer-row > td {
+            padding: 0 !important;
+            border-top: none !important;
+        }
+
+        /* Smooth expand */
+        .viz-inner {
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.25s ease, padding 0.2s ease;
+            padding: 0 12px;
+            box-sizing: border-box;
+        }
+        tr.visualizer-row.open .viz-inner {
+            max-height: 600px;
+            padding: 10px 12px 16px;
+        }
+
+        /* Ensure the protein bar never overflows its cell */
+        .viz-inner .protein-visualization {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .viz-inner .protein-bar {
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;    /* clip any region that nudges past the right edge */
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -19,7 +98,8 @@
     <div class="batch-results-container">
         <div class="summary">
             <p>Processed {{ total_accessions }} accession{{ "s" if total_accessions != 1 else "" }}, found {{ results|length }} result{{ "s" if results|length != 1 else "" }}.</p>
-            
+            <p style="font-size:0.85rem; color:#666;">Click any row to expand the transmembrane region visualisation for that protein.</p>
+
             {% if not_found_accessions %}
             <div class="not-found">
                 <h3>Accessions not found:</h3>
@@ -43,9 +123,7 @@
         <table class="batch-results-table">
             <thead>
                 <tr>
-                    <th rowspan="2">Protein Name</th>
-                    <th rowspan="2">Gene Name</th>
-                    <th rowspan="2">Accession</th>
+                    <th rowspan="2">Protein</th>
                     <th colspan="3">UniProt Transmembrane Features</th>
                     <th colspan="3">Phobius Transmembrane Features</th>
                     <th colspan="3">DeepTMHMM Transmembrane Features</th>
@@ -76,10 +154,35 @@
             </thead>
             <tbody>
                 {% for result in results %}
-                <tr>
-                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry" target="_blank">{{ result.name }}</a></td>
-                    <td>{{ result.gene_name }}</td>
-                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry" target="_blank">{{ result.accession }}</a></td>
+
+                {#
+                  data-regions contains clean [start, end] integer pairs from the
+                  dedicated *_regions_list fields, not the display strings.
+                #}
+                <tr class="data-row"
+                    data-target="viz-{{ loop.index }}"
+                    data-rendered="false"
+                    data-seq-len="{{ result.sequence_length }}"
+                    data-regions='{{ {
+                        "uniprot":   result.uniprot_regions_list,
+                        "phobius":   result.phobius_regions_list,
+                        "deeptmhmm": result.deeptmhmm_regions_list,
+                        "tmbed":     result.tmbed_regions_list,
+                        "topcons":   result.topcons_regions_list
+                    } | tojson }}'>
+
+                    <td class="protein-identity">
+                        <a class="prot-name"
+                           href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry"
+                           target="_blank"
+                           onclick="event.stopPropagation()">{{ result.name }}</a>
+                        <span class="prot-gene">{{ result.gene_name }}</span>
+                        <a class="prot-acc"
+                           href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry"
+                           target="_blank"
+                           onclick="event.stopPropagation()">{{ result.accession }}</a>
+                        <span class="expand-indicator">&#9660; show visualisation</span>
+                    </td>
 
                     <td>{{ result.uniprot_count }}</td>
                     <td>{{ result.uniprot_regions }}</td>
@@ -101,6 +204,17 @@
                     <td>{{ result.topcons_regions }}</td>
                     <td>{{ result.topcons_percentage }}</td>
                 </tr>
+
+                <tr class="visualizer-row" id="viz-{{ loop.index }}">
+                    <td colspan="16">
+                        <div class="viz-inner">
+                            <div class="protein-visualization" id="viz-content-{{ loop.index }}">
+                                <!-- rendered by JS on first expand -->
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+
                 {% endfor %}
             </tbody>
         </table>
@@ -111,5 +225,71 @@
             </a>
         </div>
     </div>
+
+    <script>
+    const VIZ_METHODS = [
+        { key: 'uniprot',   label: 'UniProt',   cls: 'uniprot-region'   },
+        { key: 'phobius',   label: 'Phobius',   cls: 'phobius-region'   },
+        { key: 'deeptmhmm', label: 'DeepTMHMM', cls: 'deeptmhmm-region' },
+        { key: 'tmbed',     label: 'TMBED',     cls: 'tmbed-region'     },
+        { key: 'topcons',   label: 'TOPCONS',   cls: 'topcons-region'   },
+    ];
+
+    function renderViz(dataRow) {
+        const seqLen    = parseInt(dataRow.dataset.seqLen, 10);
+        const regions   = JSON.parse(dataRow.dataset.regions);
+        const idx       = dataRow.dataset.target.replace('viz-', '');
+        const container = document.getElementById('viz-content-' + idx);
+
+        if (!seqLen || seqLen === 0) {
+            container.innerHTML = '<p style="color:#999;font-size:0.82rem;">Sequence length unavailable — cannot render visualisation.</p>';
+            return;
+        }
+
+        let html = `<div class="sequence-info">Protein length: ${seqLen} amino acids</div>`;
+
+        VIZ_METHODS.forEach(method => {
+            const methodRegions = regions[method.key] || [];
+            let barsHtml = '';
+            methodRegions.forEach(region => {
+                // Each region is a [start, end] array of integers
+                const start = region[0];
+                const end   = region[1];
+                if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+                const left  = (start / seqLen * 100).toFixed(3);
+                const width = ((end - start + 1) / seqLen * 100).toFixed(3);
+                barsHtml += `<div class="tm-region ${method.cls}"
+                    style="left:${left}%;width:${width}%;"
+                    title="Position ${start}–${end} (${end - start + 1} aa)"></div>`;
+            });
+            html += `<div class="region-label ${method.key}-label">${method.label}</div>
+                     <div class="protein-bar">${barsHtml}</div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    document.querySelectorAll('tr.data-row').forEach(dataRow => {
+        dataRow.addEventListener('click', () => {
+            const vizRow    = document.getElementById(dataRow.dataset.target);
+            const indicator = dataRow.querySelector('.expand-indicator');
+            const isOpen    = dataRow.classList.contains('open');
+
+            if (isOpen) {
+                dataRow.classList.remove('open');
+                vizRow.classList.remove('open');
+                indicator.innerHTML = '&#9660; show visualisation';
+            } else {
+                if (dataRow.dataset.rendered === 'false') {
+                    renderViz(dataRow);
+                    dataRow.dataset.rendered = 'true';
+                }
+                dataRow.classList.add('open');
+                vizRow.classList.add('open');
+                indicator.innerHTML = '&#9650; hide visualisation';
+            }
+        });
+    });
+    </script>
 </body>
 </html>

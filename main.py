@@ -21,10 +21,8 @@ def get_uniprot_data(query, is_accession=False):
     reviewed = "true"
     
     if is_accession:
-        # Direct accession query
         query_string = f"(accession:{query}) AND (organism_id:{organism_id}) AND (reviewed:{reviewed})"
     else:
-        # General search query
         query_string = f"((organism_id:{organism_id}) AND (reviewed:{reviewed}) AND ({query}))"
     
     parameters = {
@@ -42,23 +40,20 @@ def get_uniprot_data(query, is_accession=False):
         gene_name = "Unknown"
         primary_accession = result.get("primaryAccession", "N/A")
         
-        # Get protein name
         if "proteinDescription" in result and "recommendedName" in result["proteinDescription"]:
             recommended_name = result["proteinDescription"]["recommendedName"]
             if "fullName" in recommended_name and "value" in recommended_name["fullName"]:
                 protein_name = recommended_name["fullName"]["value"]
         
-        # Get protein sequence length
         sequence_length = 0
         if "sequence" in result and "length" in result["sequence"]:
             sequence_length = result["sequence"]["length"]
 
-        # Get gene name
         if "genes" in result and result["genes"]:
             for gene in result["genes"]:
                 if "geneName" in gene:
                     gene_name = gene["geneName"].get("value", "Unknown")
-                    break  # Take the first gene name found
+                    break
 
         transmembrane_helical_features = []
         if "features" in result:
@@ -95,11 +90,8 @@ def get_uniprot_data(query, is_accession=False):
     return results
 
 def get_batch_uniprot_data(accessions):
-    """Fetch data for multiple accessions in batches from UniProt"""
     results = []
     not_found = []
-    
-    # Process in smaller batches to avoid overwhelming the API
     batch_size = 10
     
     for i in range(0, len(accessions), batch_size):
@@ -107,13 +99,10 @@ def get_batch_uniprot_data(accessions):
         
         for accession in batch_accessions:
             try:
-                # Get data for this accession
                 protein_data = get_uniprot_data(accession, is_accession=True)
                 
                 if protein_data and len(protein_data) > 0:
-                    # Process the protein data
                     for result in protein_data:
-                        # Format uniprot feature info
                         transmembrane_regions = result.get("transmembrane_regions", [])
                         if not transmembrane_regions:
                             uniprot_count = 0
@@ -122,11 +111,8 @@ def get_batch_uniprot_data(accessions):
                             uniprot_count = len(transmembrane_regions)
                             uniprot_regions = ", ".join([f"{start}-{end}" for start, end in transmembrane_regions])
                         
-                        # Add uniprot count and regions to result
                         result["uniprot_count"] = uniprot_count
                         result["uniprot_regions"] = uniprot_regions
-                        
-                        # Add to results
                         results.append(result)
                 else:
                     not_found.append(accession)
@@ -137,24 +123,18 @@ def get_batch_uniprot_data(accessions):
     return results, not_found
 
 def calculate_tm_percentage(tm_regions, sequence_length):
-    """Calculate what percentage of the sequence the TM regions comprise"""
     if not tm_regions or sequence_length == 0:
         return 0.0
-    
     total_tm_residues = sum(end - start + 1 for start, end in tm_regions)
     percentage = (total_tm_residues / sequence_length) * 100
     return percentage
 
 def process_tm_string(tm_string):
-    # Split the string by 'i' and 'o'
     parts = re.split('[io]', tm_string)
-    # Filter out empty strings and process each part
     tm_regions = []
     for part in parts:
         if part:
-            # Split by '/' and take the last part
             region = part.split('/')[-1]
-            # Only add if it contains a '-'
             if '-' in region:
                 start, end = map(int, region.split('-'))
                 tm_regions.append((start, end))
@@ -162,10 +142,8 @@ def process_tm_string(tm_string):
 
 
 def get_csv_data(accessions=None, sequence_length_dict=None):
-    # Read the CSV file
     df = pd.read_csv('phobius.csv', sep=';')
     
-    # Filter by accessions if provided
     if accessions:
         df = df[df['Accession'].isin(accessions)]
     
@@ -175,18 +153,12 @@ def get_csv_data(accessions=None, sequence_length_dict=None):
         signal_peptide = 'Yes' if row['Signal peptide'] == 'Y' else 'No'
 
         tm_regions = process_tm_string(row['TM string'])
-        
-        # Count and format regions
         count = len(tm_regions)
         regions_str = ", ".join([f"{start}-{end}" for start, end in tm_regions])
 
         feature_info = f"{count} transmembrane helical region{'s' if count != 1 else ''}"
-        # uncomment the following if you want to report on signal peptides
-        # if signal_peptide == 'Yes':
-        #    feature_info += " (with a signal peptide)"
         if tm_regions:
             feature_info += ": " + regions_str
-            # Add percentage if sequence length is available
             if sequence_length_dict and accession in sequence_length_dict:
                 seq_len = sequence_length_dict[accession]
                 tm_percentage = calculate_tm_percentage(tm_regions, seq_len)
@@ -196,9 +168,9 @@ def get_csv_data(accessions=None, sequence_length_dict=None):
             'accession': accession,
             'feature_info': feature_info,
             'data_source': 'CSV',
-            'tm_regions': tm_regions,
+            'tm_regions': tm_regions,   # list of (int, int) tuples — used for visualisation
             'count': count,
-            'regions': regions_str
+            'regions': regions_str      # display string — used for table cell
         })
 
     return processed_data
@@ -218,7 +190,6 @@ def parse_tsv_data(file_path, accessions=None):
                     parts = line.split('|')
                     accession = parts[1]
                     
-                    # Skip if not in the requested accessions
                     if accessions and accession not in accessions:
                         current_protein = None
                         continue
@@ -261,10 +232,8 @@ def format_tsv_results(tsv_data, sequence_length_dict=None):
         tm_regions = data.get('tm_regions', [])
         has_signal = data['has_signal']
         
-        # Get the parsed regions (tuples of start-end)
         parsed_regions = data.get('tm_regions_parsed', [])
         if not parsed_regions and tm_regions:
-            # Convert string regions to tuples if needed
             parsed_regions = []
             for region in tm_regions:
                 if '-' in region:
@@ -275,23 +244,19 @@ def format_tsv_results(tsv_data, sequence_length_dict=None):
             feature_info = "0 transmembrane helical regions"
         else:
             feature_info = f"{tm_count} transmembrane helical region{'s' if tm_count > 1 else ''}"
-            # if has_signal:
-            #    feature_info += " (with a signal peptide)"
             feature_info += ": " + ", ".join(tm_regions)
-            # Add percentage if sequence length is available
             if sequence_length_dict and accession in sequence_length_dict:
                 seq_len = sequence_length_dict[accession]
                 tm_percentage = calculate_tm_percentage(parsed_regions, seq_len)
                 feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
-        regions_dict[accession] = parsed_regions
+        regions_dict[accession] = parsed_regions  # list of (int, int) tuples
 
     return formatted_results, regions_dict
 
 
 def parse_tmbed_data(file_path, accessions=None):
-    """Parse TMBED prediction file and extract transmembrane regions"""
     results = {}
     current_accession = None
 
@@ -299,12 +264,9 @@ def parse_tmbed_data(file_path, accessions=None):
         for line in file:
             line = line.strip()
             if line.startswith('>'):
-                # Parse FASTA header to extract accession
-                # Format: >sp|ACCESSION|PROTEIN_NAME ...
                 parts = line.split('|')
                 if len(parts) >= 2:
                     current_accession = parts[1]
-                    # Skip if not in requested accessions
                     if accessions and current_accession not in accessions:
                         current_accession = None
                         continue
@@ -316,34 +278,27 @@ def parse_tmbed_data(file_path, accessions=None):
                 else:
                     current_accession = None
             elif current_accession and line:
-                # Process prediction string
                 sequence_length = len(line)
                 results[current_accession]['sequence_length'] = sequence_length
 
-                # Find transmembrane regions (H or h)
                 tm_regions = []
                 signal_regions = []
 
                 i = 0
                 while i < len(line):
                     char = line[i]
-
                     if char in 'Hh':
-                        # Start of transmembrane region
-                        start = i + 1  # 1-based indexing
+                        start = i + 1
                         while i < len(line) and line[i] in 'Hh':
                             i += 1
-                        end = i  # 1-based indexing
+                        end = i
                         tm_regions.append((start, end))
-
                     elif char == 'S':
-                        # Start of signal peptide region
                         start = i + 1
                         while i < len(line) and line[i] == 'S':
                             i += 1
                         end = i
                         signal_regions.append((start, end))
-
                     else:
                         i += 1
 
@@ -354,7 +309,6 @@ def parse_tmbed_data(file_path, accessions=None):
 
 
 def get_tmbed_data(accessions=None):
-    """Get TMBED data and format it for display"""
     tmbed_data = parse_tmbed_data('tmbed_combined.txt', accessions)
     formatted_results = {}
     regions_dict = {}
@@ -374,12 +328,11 @@ def get_tmbed_data(accessions=None):
                 feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
-        regions_dict[accession] = tm_regions
+        regions_dict[accession] = tm_regions  # list of (int, int) tuples
 
     return formatted_results, regions_dict
 
 def parse_topcons_data(file_path, accessions=None):
-    """Parse TOPCONS prediction file and extract transmembrane regions"""
     results = {}
     current_accession = None
 
@@ -387,12 +340,9 @@ def parse_topcons_data(file_path, accessions=None):
         for line in file:
             line = line.strip()
             if line.startswith('>'):
-                # Parse FASTA header to extract accession
-                # Format: >sp|ACCESSION|PROTEIN_NAME ...
                 parts = line.split('|')
                 if len(parts) >= 2:
                     current_accession = parts[1]
-                    # Skip if not in requested accessions
                     if accessions and current_accession not in accessions:
                         current_accession = None
                         continue
@@ -404,34 +354,27 @@ def parse_topcons_data(file_path, accessions=None):
                 else:
                     current_accession = None
             elif current_accession and line:
-                # Process prediction string
                 sequence_length = len(line)
                 results[current_accession]['sequence_length'] = sequence_length
 
-                # Find transmembrane regions (M)
                 tm_regions = []
                 signal_regions = []
 
                 i = 0
                 while i < len(line):
                     char = line[i]
-
                     if char == 'M':
-                        # Start of transmembrane region
-                        start = i + 1  # 1-based indexing
+                        start = i + 1
                         while i < len(line) and line[i] == 'M':
                             i += 1
-                        end = i  # 1-based indexing
+                        end = i
                         tm_regions.append((start, end))
-
                     elif char == 'S':
-                        # Start of signal peptide region
                         start = i + 1
                         while i < len(line) and line[i] == 'S':
                             i += 1
                         end = i
                         signal_regions.append((start, end))
-
                     else:
                         i += 1
 
@@ -442,7 +385,6 @@ def parse_topcons_data(file_path, accessions=None):
 
 
 def get_topcons_data(accessions=None):
-    """Get TOPCONS data and format it for display"""
     topcons_data = parse_topcons_data('topcons_combined.txt', accessions)
     formatted_results = {}
     regions_dict = {}
@@ -462,121 +404,103 @@ def get_topcons_data(accessions=None):
                 feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
 
         formatted_results[accession] = feature_info
-        regions_dict[accession] = tm_regions
+        regions_dict[accession] = tm_regions  # list of (int, int) tuples
 
     return formatted_results, regions_dict
 
 
-# Updated process_batch_query function
 def process_batch_query(batch_accessions):
-    """Process a batch of accessions and return the combined results"""
-    # Clean and deduplicate accessions
     accessions = [acc.strip() for acc in batch_accessions if acc.strip()]
-    accessions = list(set(accessions))  # Remove duplicates
+    accessions = list(set(accessions))
 
-    # Get UniProt data
     uniprot_results, not_found_accessions = get_batch_uniprot_data(accessions)
-
-    # Create map of accession to UniProt result for easy lookup
-    uniprot_map = {result['accession']: result for result in uniprot_results}
-    
-    # Create sequence length dictionary
     sequence_length_dict = {result['accession']: result['sequence_length'] for result in uniprot_results}
 
-    # Get Phobius data for these accessions
     csv_results = get_csv_data(accessions, sequence_length_dict)
     csv_dict = {item['accession']: item for item in csv_results}
 
-    # Get DeepTMHMM data for these accessions
     tsv_results, tsv_regions = get_tsv_data(accessions, sequence_length_dict)
-
-    # Get TMBED data for these accessions
     tmbed_results, tmbed_regions = get_tmbed_data(accessions)
-
-    # Get TOPCONS data for these accessions
     topcons_results, topcons_regions = get_topcons_data(accessions)
 
-    # Create the combined results
     combined_results = []
 
-    # Start with all accessions found in UniProt
     for uniprot_item in uniprot_results:
         accession = uniprot_item['accession']
         seq_len = sequence_length_dict.get(accession, 0)
 
-        # UniProt percentage
+        # UniProt — tuples already in transmembrane_regions
         uniprot_tm_regions = uniprot_item.get('transmembrane_regions', [])
         uniprot_percentage = f"{calculate_tm_percentage(uniprot_tm_regions, seq_len):.1f}" if uniprot_tm_regions and seq_len else ""
 
-        # Get Phobius data
-        phobius_item = csv_dict.get(accession, None)
-        phobius_feature_info = 'No data'
+        # Phobius — tm_regions is the list of tuples; regions is the display string
+        phobius_item = csv_dict.get(accession)
         phobius_count = 0
-        phobius_regions = ''
+        phobius_regions_display = ''
+        phobius_regions_list = []
         phobius_percentage = ''
         if phobius_item:
-            phobius_feature_info = phobius_item['feature_info']
             phobius_count = phobius_item['count']
-            phobius_regions = phobius_item['regions']
-            phobius_tm_regions = phobius_item.get('tm_regions', [])
-            if phobius_tm_regions and seq_len:
-                phobius_percentage = f"{calculate_tm_percentage(phobius_tm_regions, seq_len):.1f}"
+            phobius_regions_display = phobius_item['regions']   # "23-45, 67-89"
+            phobius_regions_list = phobius_item['tm_regions']   # [(23,45), (67,89)]
+            if phobius_regions_list and seq_len:
+                phobius_percentage = f"{calculate_tm_percentage(phobius_regions_list, seq_len):.1f}"
 
-        # Get DeepTMHMM data
-        deeptmhmm_feature_info = tsv_results.get(accession, 'No data')
+        # DeepTMHMM
         deeptmhmm_regions_list = tsv_regions.get(accession, [])
         deeptmhmm_count = len(deeptmhmm_regions_list)
-        deeptmhmm_regions_str = ', '.join([f"{start}-{end}" for start, end in deeptmhmm_regions_list])
+        deeptmhmm_regions_display = ', '.join([f"{s}-{e}" for s, e in deeptmhmm_regions_list])
         deeptmhmm_percentage = f"{calculate_tm_percentage(deeptmhmm_regions_list, seq_len):.1f}" if deeptmhmm_regions_list and seq_len else ""
 
-        # Get TMBED data
-        tmbed_feature_info = tmbed_results.get(accession, 'No data')
+        # TMBED
         tmbed_regions_list = tmbed_regions.get(accession, [])
         tmbed_count = len(tmbed_regions_list)
-        tmbed_regions_str = ', '.join([f"{start}-{end}" for start, end in tmbed_regions_list])
+        tmbed_regions_display = ', '.join([f"{s}-{e}" for s, e in tmbed_regions_list])
         tmbed_percentage = f"{calculate_tm_percentage(tmbed_regions_list, seq_len):.1f}" if tmbed_regions_list and seq_len else ""
 
-        # Get TOPCONS data
-        topcons_feature_info = topcons_results.get(accession, 'No data')
+        # TOPCONS
         topcons_regions_list = topcons_regions.get(accession, [])
         topcons_count = len(topcons_regions_list)
-        topcons_regions_str = ', '.join([f"{start}-{end}" for start, end in topcons_regions_list])
+        topcons_regions_display = ', '.join([f"{s}-{e}" for s, e in topcons_regions_list])
         topcons_percentage = f"{calculate_tm_percentage(topcons_regions_list, seq_len):.1f}" if topcons_regions_list and seq_len else ""
 
-        # Add to combined results
         combined_results.append({
             'name': uniprot_item['name'],
             'gene_name': uniprot_item['gene_name'],
             'accession': accession,
             'sequence_length': seq_len,
+            # Display strings for table cells
             'uniprot_count': uniprot_item['uniprot_count'],
             'uniprot_regions': uniprot_item['uniprot_regions'],
             'uniprot_percentage': uniprot_percentage,
             'phobius_count': phobius_count,
-            'phobius_regions': phobius_regions,
+            'phobius_regions': phobius_regions_display,
             'phobius_percentage': phobius_percentage,
             'deeptmhmm_count': deeptmhmm_count,
-            'deeptmhmm_regions': deeptmhmm_regions_str,
+            'deeptmhmm_regions': deeptmhmm_regions_display,
             'deeptmhmm_percentage': deeptmhmm_percentage,
             'tmbed_count': tmbed_count,
-            'tmbed_regions': tmbed_regions_str,
+            'tmbed_regions': tmbed_regions_display,
             'tmbed_percentage': tmbed_percentage,
             'topcons_count': topcons_count,
-            'topcons_regions': topcons_regions_str,
+            'topcons_regions': topcons_regions_display,
             'topcons_percentage': topcons_percentage,
+            # Coordinate lists for visualisation (stored as lists of [start, end])
+            'uniprot_regions_list': [list(r) for r in uniprot_tm_regions],
+            'phobius_regions_list': [list(r) for r in phobius_regions_list],
+            'deeptmhmm_regions_list': [list(r) for r in deeptmhmm_regions_list],
+            'tmbed_regions_list': [list(r) for r in tmbed_regions_list],
+            'topcons_regions_list': [list(r) for r in topcons_regions_list],
         })
 
     return combined_results, not_found_accessions, len(accessions)
 
 
 def export_to_csv(results, format='csv'):
-    """Export results to CSV or TSV format"""
     delimiter = ',' if format == 'csv' else '\t'
-    
     output = StringIO()
     writer = csv.writer(output, delimiter=delimiter)
     
-    # Write header
     header = [
         'Protein Name', 'Gene Name', 'Accession',
         'UniProt TM Count', 'UniProt TM Regions', 'UniProt TM %',
@@ -587,7 +511,6 @@ def export_to_csv(results, format='csv'):
     ]
     writer.writerow(header)
     
-    # Write data rows
     for item in results:
         row = [
             item['name'], item['gene_name'], item['accession'],
@@ -606,18 +529,14 @@ app = Flask(__name__)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Check if it's a single search or batch search
         search_type = request.form.get('search_type', 'single')
         
         if search_type == 'batch':
-            # Redirect to batch processing route
             return redirect(url_for('batch'))
         
-        # Regular single search
         query = request.form['query']
         uniprot_results = get_uniprot_data(query)
         
-        # Create sequence length dictionary from uniprot results
         sequence_length_dict = {result['accession']: result['sequence_length'] for result in uniprot_results}
         
         csv_results = get_csv_data(sequence_length_dict=sequence_length_dict)
@@ -645,57 +564,43 @@ def index():
 
 @app.route('/batch', methods=['POST'])
 def batch():
-    # Get batch query input
     batch_query = request.form.get('batch_query', '').strip()
     
     if not batch_query:
         return redirect(url_for('index'))
     
-    # Split by space or newline
     accessions = re.split(r'[\s\n\r]+', batch_query)
-    
-    # Generate a unique batch ID
     batch_id = str(uuid.uuid4())
     
-    # Store the accession list
     batch_storage[batch_id] = {
         'accessions': accessions,
         'submitted_at': datetime.now().isoformat(),
         'status': 'processing'
     }
     
-    # Redirect to processing page
     return render_template('batch_processing.html', batch_id=batch_id, total_accessions=len(accessions))
 
 @app.route('/batch/<batch_id>')
 def batch_results(batch_id):
-    # Check if batch exists
     if batch_id not in batch_storage:
         return redirect(url_for('index'))
     
-    # Get batch data
     batch_data = batch_storage[batch_id]
     
-    # If status is processing, process the batch now
     if batch_data['status'] == 'processing':
         accessions = batch_data['accessions']
-        
-        # Process the batch
         results, not_found, total = process_batch_query(accessions)
         
-        # Update batch storage
         batch_data['results'] = results
         batch_data['not_found'] = not_found
         batch_data['total'] = total
         batch_data['processed_at'] = datetime.now().isoformat()
         batch_data['status'] = 'completed'
         
-        # Save to file for persistence
         batch_file = os.path.join('batch_results', f"{batch_id}.json")
         with open(batch_file, 'w') as f:
             json.dump(batch_data, f)
     
-    # Return the results page
     return render_template('batch_results.html',
                           batch_id=batch_id,
                           results=batch_data['results'],
@@ -704,30 +609,22 @@ def batch_results(batch_id):
 
 @app.route('/export/<batch_id>')
 def export_batch(batch_id):
-    # Get the export format
     format = request.args.get('format', 'csv')
     if format not in ['csv', 'tsv']:
         format = 'csv'
     
-    # Check if batch exists
     if batch_id not in batch_storage:
         return redirect(url_for('index'))
     
-    # Get batch data
     batch_data = batch_storage[batch_id]
     
-    # Check if results are available
     if 'results' not in batch_data or batch_data['status'] != 'completed':
         return redirect(url_for('batch_results', batch_id=batch_id))
     
-    # Generate CSV/TSV data
     output_data = export_to_csv(batch_data['results'], format)
-    
-    # Create response
     mimetype = 'text/csv' if format == 'csv' else 'text/tab-separated-values'
     filename = f"transmembrane_domains_{batch_id}.{format}"
     
-    # Return the file as an attachment
     return output_data, 200, {
         'Content-Type': f'{mimetype}; charset=utf-8',
         'Content-Disposition': f'attachment; filename="{filename}"'
@@ -735,7 +632,6 @@ def export_batch(batch_id):
 
 @app.route('/stats/<batch_id>')
 def batch_stats(batch_id):
-    # Check if batch exists
     if batch_id not in batch_storage:
         return redirect(url_for('index'))
 
@@ -744,7 +640,6 @@ def batch_stats(batch_id):
     if 'results' not in batch_data or batch_data['status'] != 'completed':
         return redirect(url_for('batch_results', batch_id=batch_id))
 
-    # Serialize results as JSON for the template
     results_json = json.dumps(batch_data['results'])
 
     return render_template('batch_stats.html',
