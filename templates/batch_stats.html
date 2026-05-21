@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistics - Transmembrane Proteins 3000</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='batch_stats.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <h1>Transmembrane Proteins 3000 — Batch Statistics</h1>
+    <p class="subtitle">
+        {{ total }} protein{{ "s" if total != 1 else "" }} processed
+        &nbsp;·&nbsp;
+        Batch ID: <code>{{ batch_id }}</code>
+    </p>
+
+    <!-- 1 · Summary statistics table -->
+    <div class="section">
+        <h2>Summary Statistics</h2>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>IMPs<span class="th-note">in this dataset</span></th>
+                    <th>% IMPs<span class="th-note">of this dataset</span></th>
+                    <th>% IMPs of Human Proteome<span class="th-note" id="proteome-note">of reference proteins</span></th>
+                    <th>Max TM helices</th>
+                </tr>
+            </thead>
+            <tbody id="summary-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- 2 · Distribution — raw counts -->
+    <div class="section">
+        <h2>Distribution of Transmembrane Helix Counts</h2>
+        <div class="chart-wrapper">
+            <canvas id="dist-chart"></canvas>
+        </div>
+        <p class="chart-note">Proteins with 0 TM helices are excluded. Counts above 12 are grouped into the "12+" category.</p>
+    </div>
+
+    <!-- 3 · TM helix count — fractions + table -->
+    <div class="section">
+        <h2>TM Helix Count Distribution: Dataset vs. Human Proteome (Fractions)</h2>
+        <div class="chart-legend">
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
+                <span>This dataset (avg across methods)</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
+                <span>Human proteome (avg across methods)</span>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="fraction-chart"></canvas>
+        </div>
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="col-label">TM helices</th>
+                    <th>Dataset fraction</th>
+                    <th>Proteome fraction</th>
+                    <th>Ratio (dataset / proteome)</th>
+                </tr>
+            </thead>
+            <tbody id="fraction-tbody"></tbody>
+        </table>
+        <p class="chart-note">
+            Y-axis: fraction of each reference population at that TM helix count.
+            Dataset fractions computed from batch results; proteome fractions are hardcoded reference values.
+            Both averaged across the five prediction methods.
+        </p>
+    </div>
+
+    <!-- 4 · TM helix count — absolute counts + table -->
+    <div class="section">
+        <h2>Proteome Coverage by TM Helix Count</h2>
+        <div class="chart-legend">
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
+                <span>This dataset (avg across methods)</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.45);border:1px solid #555;"></div>
+                <span>Human proteome (avg across methods)</span>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="coverage-chart"></canvas>
+        </div>
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="col-label">TM helices</th>
+                    <th>Proteome (avg)</th>
+                    <th>Dataset (avg)</th>
+                    <th>Dataset coverage</th>
+                </tr>
+            </thead>
+            <tbody id="coverage-tbody"></tbody>
+        </table>
+        <p class="chart-note">
+            Both bars and table values are averages across the five prediction methods.
+            "Dataset coverage" is the percentage of the proteome bin represented by the dataset.
+        </p>
+    </div>
+
+    <!-- 5 · % sequence coverage — absolute counts + table -->
+    <div class="section">
+        <h2>Distribution of TM Region Coverage (% of Sequence)</h2>
+        <div class="chart-legend">
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
+                <span>This dataset (avg across methods)</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
+                <span>Human proteome (avg across methods)</span>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="pct-coverage-chart"></canvas>
+        </div>
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="col-label">% of sequence</th>
+                    <th>Proteome (avg)</th>
+                    <th>Dataset (avg)</th>
+                    <th>Dataset coverage</th>
+                </tr>
+            </thead>
+            <tbody id="pct-coverage-tbody"></tbody>
+        </table>
+        <p class="chart-note">
+            Y-axis: number of proteins in each % coverage bin (5 pp wide).
+            Dataset values are averaged across all five prediction methods.
+            Proteome reference values are hardcoded — only proteins with at least one TM helix predicted are included.
+        </p>
+    </div>
+
+    <!-- 6 · % sequence coverage — fractions + table -->
+    <div class="section">
+        <h2>TM Region Coverage Distribution: Dataset vs. Human Proteome (Fractions)</h2>
+        <div class="chart-legend">
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
+                <span>This dataset (avg across methods)</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
+                <span>Human proteome (avg across methods)</span>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="pct-fraction-chart"></canvas>
+        </div>
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="col-label">% of sequence</th>
+                    <th>Dataset fraction</th>
+                    <th>Proteome fraction</th>
+                    <th>Ratio (dataset / proteome)</th>
+                </tr>
+            </thead>
+            <tbody id="pct-fraction-tbody"></tbody>
+        </table>
+        <p class="chart-note">
+            Y-axis: fraction of each reference IMP population in that % coverage bin.
+            Both averaged across the five prediction methods.
+        </p>
+    </div>
+
+    <!-- 7 · Method agreement pie -->
+    <div class="section">
+        <h2>Method Agreement on Membrane Protein Classification</h2>
+        <p class="chart-note" style="margin-bottom:12px;margin-top:0;">Click a slice to see the proteins in that category.</p>
+        <div class="pie-section-layout">
+            <div class="pie-wrapper">
+                <canvas id="agreement-pie"></canvas>
+            </div>
+            <div class="summary-box">
+                <div class="summary-title">Agreement Summary</div>
+                <div id="agreement-legend"></div>
+                <hr class="summary-divider">
+                <div id="agreement-stats"></div>
+            </div>
+        </div>
+        <p class="chart-note">A protein is counted as a membrane protein by a given method if its predicted TM helix count is > 0. Proteins classified by 0 methods are not shown.</p>
+        <!-- Expandable protein list for agreement pie -->
+        <div class="protein-list-panel" id="agree-protein-panel">
+            <div class="protein-list-header">
+                <h3 id="agree-panel-title"></h3>
+                <span class="protein-list-close" onclick="closePanel('agree')">&#x2715; close</span>
+            </div>
+            <table class="protein-list-table">
+                <thead>
+                    <tr><th>Accession</th><th>Gene</th><th>Protein name</th><th>Methods agreeing</th></tr>
+                </thead>
+                <tbody id="agree-panel-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 8 · Consensus classification pie -->
+    <div class="section">
+        <h2>Prediction Consensus Classification — Membrane Proteins Only</h2>
+        <p class="chart-note" style="margin-bottom:12px;margin-top:0;">Click a slice to see the proteins in that category.</p>
+        <div class="pie-section-layout">
+            <div class="pie-wrapper">
+                <canvas id="consensus-pie"></canvas>
+            </div>
+            <div class="summary-box">
+                <div class="summary-title">Consensus Summary</div>
+                <div id="consensus-legend"></div>
+                <hr class="summary-divider">
+                <div id="consensus-stats"></div>
+            </div>
+        </div>
+        <p class="chart-note">Membrane proteins are those where the modal predicted TM count across all 5 methods is > 0. Consensus level reflects how many methods agree on that modal count.</p>
+        <!-- Expandable protein list for consensus pie -->
+        <div class="protein-list-panel" id="cons-protein-panel">
+            <div class="protein-list-header">
+                <h3 id="cons-panel-title"></h3>
+                <span class="protein-list-close" onclick="closePanel('cons')">&#x2715; close</span>
+            </div>
+            <table class="protein-list-table">
+                <thead>
+                    <tr><th>Accession</th><th>Gene</th><th>Protein name</th><th>Consensus level</th></tr>
+                </thead>
+                <tbody id="cons-panel-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!--
+        Data injection block — must stay inline because it contains Jinja template
+        variables. Defines RAW (batch results) and all PROTEOME_* reference constants
+        that batch_stats.js reads as globals.
+    -->
+    <script>
+    // ── Batch results from Flask ──────────────────────────────────────────────
+    const RAW = {{ results_json | safe }};
+
+    // ════════════════════════════════════════════════════════════════════════
+    // HARDCODED REFERENCE DATA — update after each database refresh
+    // ════════════════════════════════════════════════════════════════════════
+
+    const PROTEOME_SIZE_UniProt   = 5215;
+    const PROTEOME_SIZE_Phobius   = 5428;
+    const PROTEOME_SIZE_DeepTMHMM = 4955;
+    const PROTEOME_SIZE_TMBED     = 4973;
+    const PROTEOME_SIZE_TOPCONS   = 5633;
+
+    const PROTEOME_SIZE = {
+        'UniProt':   PROTEOME_SIZE_UniProt,
+        'Phobius':   PROTEOME_SIZE_Phobius,
+        'DeepTMHMM': PROTEOME_SIZE_DeepTMHMM,
+        'TMBED':     PROTEOME_SIZE_TMBED,
+        'TOPCONS':   PROTEOME_SIZE_TOPCONS,
+    };
+
+    // TM helix count distribution per tool (index 0 → 1 helix … index 12 → 12+)
+    const PROTEOME_DIST_UniProt   = [2390, 323, 159, 407, 76, 276, 948, 83, 62, 125, 79, 192, 95];
+    const PROTEOME_DIST_Phobius   = [2501, 455, 223, 354, 138, 207, 858, 137, 88, 94, 100, 168, 105];
+    const PROTEOME_DIST_DeepTMHMM = [2156, 317, 121, 445, 53, 240, 926, 96, 55, 117, 69, 239, 121];
+    const PROTEOME_DIST_TMBED     = [2197, 278, 100, 422, 71, 269, 945, 69, 63, 126, 73, 230, 130];
+    const PROTEOME_DIST_TOPCONS   = [2441, 569, 253, 435, 151, 355, 695, 159, 90, 101, 92, 179, 114];
+
+    const PROTEOME_DIST = {
+        'UniProt':   PROTEOME_DIST_UniProt,
+        'Phobius':   PROTEOME_DIST_Phobius,
+        'DeepTMHMM': PROTEOME_DIST_DeepTMHMM,
+        'TMBED':     PROTEOME_DIST_TMBED,
+        'TOPCONS':   PROTEOME_DIST_TOPCONS,
+    };
+
+    // % sequence coverage distribution per tool (5 pp bins; last bin is open-ended).
+    // Array length determines the number of bins — all five must have the same length.
+    // Index 0 → 0–5%, index 1 → 5–10%, …, last index → (n-1)*5 %+
+    const PROTEOME_PCT_DIST_UniProt   = [1308, 846, 378, 341, 269, 246, 246, 325, 359, 634, 156, 54, 31, 12, 10];
+    const PROTEOME_PCT_DIST_Phobius   = [1364, 923, 446, 352, 290, 250, 249, 305, 310, 410, 373, 100, 38, 12, 6];
+    const PROTEOME_PCT_DIST_DeepTMHMM = [1333, 738, 339, 342, 249, 203, 236, 260, 320, 507, 328, 65, 26, 6, 3];
+    const PROTEOME_PCT_DIST_TMBED     = [1240, 702, 354, 280, 260, 225, 194, 267, 254, 364, 413, 352, 42, 19, 7];
+    const PROTEOME_PCT_DIST_TOPCONS   = [1428, 1040, 456, 400, 292, 265, 331, 343, 345, 463, 166, 55, 31, 7, 11];
+
+    const PROTEOME_PCT_DIST = {
+        'UniProt':   PROTEOME_PCT_DIST_UniProt,
+        'Phobius':   PROTEOME_PCT_DIST_Phobius,
+        'DeepTMHMM': PROTEOME_PCT_DIST_DeepTMHMM,
+        'TMBED':     PROTEOME_PCT_DIST_TMBED,
+        'TOPCONS':   PROTEOME_PCT_DIST_TOPCONS,
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // END OF HARDCODED REFERENCE DATA
+    // ════════════════════════════════════════════════════════════════════════
+    </script>
+
+    <script src="{{ url_for('static', filename='batch_stats.js') }}"></script>
+</body>
+</html>
