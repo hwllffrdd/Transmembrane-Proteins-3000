@@ -109,7 +109,40 @@
         </p>
     </div>
 
-    <!-- 5 · % sequence coverage — absolute counts + table -->
+    <!-- 5 · % sequence coverage — fractions + table -->
+    <div class="section">
+        <h2>TM Region Coverage Distribution: Dataset vs. Human Proteome (Fractions)</h2>
+        <div class="chart-legend">
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
+                <span>This dataset (avg across methods)</span>
+            </div>
+            <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
+                <span>Human proteome (avg across methods)</span>
+            </div>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="pct-fraction-chart"></canvas>
+        </div>
+        <table class="coverage-table">
+            <thead>
+                <tr>
+                    <th class="col-label">% of sequence</th>
+                    <th>Dataset fraction</th>
+                    <th>Proteome fraction</th>
+                    <th>Ratio (dataset / proteome)</th>
+                </tr>
+            </thead>
+            <tbody id="pct-fraction-tbody"></tbody>
+        </table>
+        <p class="chart-note">
+            Y-axis: fraction of each reference IMP population in that % coverage bin.
+            Both averaged across the five prediction methods.
+        </p>
+    </div>
+
+    <!-- 6 · % sequence coverage — absolute counts + table -->
     <div class="section">
         <h2>Distribution of TM Region Coverage (% of Sequence)</h2>
         <div class="chart-legend">
@@ -140,39 +173,6 @@
             Y-axis: number of proteins in each % coverage bin (5 pp wide).
             Dataset values are averaged across all five prediction methods.
             Proteome reference values are hardcoded — only proteins with at least one TM helix predicted are included.
-        </p>
-    </div>
-
-    <!-- 6 · % sequence coverage — fractions + table -->
-    <div class="section">
-        <h2>TM Region Coverage Distribution: Dataset vs. Human Proteome (Fractions)</h2>
-        <div class="chart-legend">
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
-                <span>This dataset (avg across methods)</span>
-            </div>
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
-                <span>Human proteome (avg across methods)</span>
-            </div>
-        </div>
-        <div class="chart-wrapper">
-            <canvas id="pct-fraction-chart"></canvas>
-        </div>
-        <table class="coverage-table">
-            <thead>
-                <tr>
-                    <th class="col-label">% of sequence</th>
-                    <th>Dataset fraction</th>
-                    <th>Proteome fraction</th>
-                    <th>Ratio (dataset / proteome)</th>
-                </tr>
-            </thead>
-            <tbody id="pct-fraction-tbody"></tbody>
-        </table>
-        <p class="chart-note">
-            Y-axis: fraction of each reference IMP population in that % coverage bin.
-            Both averaged across the five prediction methods.
         </p>
     </div>
 
