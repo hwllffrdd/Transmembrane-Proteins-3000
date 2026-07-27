@@ -1,0 +1,370 @@
+/* batch_stats.css — styles for the batch statistics page */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 24px;
+    background-color: #f8f9fa;
+}
+
+h1 {
+    font-size: 1.5em;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 28px;
+}
+
+.section {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 28px;
+}
+
+.section h2 {
+    font-size: 1.1em;
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 18px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+/* ── Summary table ─────────────────────────────────────────────────────── */
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92em;
+}
+
+.stats-table th {
+    background-color: #f2f2f2;
+    padding: 9px 12px;
+    text-align: left;
+    border: 1px solid #ddd;
+    font-weight: bold;
+}
+
+.stats-table td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+}
+
+.stats-table tr:nth-child(even) td {
+    background-color: #f9f9f9;
+}
+
+.method-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.dot-uniprot    { background-color: #3498db; }
+.dot-phobius    { background-color: #e74c3c; }
+.dot-deeptmhmm  { background-color: #2ecc71; }
+.dot-tmbed      { background-color: #9b59b6; }
+.dot-topcons    { background-color: #f39c12; }
+
+.th-note {
+    font-weight: normal;
+    font-size: 0.78em;
+    color: #888;
+    display: block;
+    margin-top: 2px;
+}
+
+/* ── Chart containers ──────────────────────────────────────────────────── */
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 440px;
+}
+
+.chart-note {
+    font-size: 0.82em;
+    color: #888;
+    margin-top: 10px;
+    text-align: center;
+}
+
+/* ── Chart legend ──────────────────────────────────────────────────────── */
+.chart-legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 0.88em;
+    flex-wrap: wrap;
+}
+
+.chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chart-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* ── Pie layout ────────────────────────────────────────────────────────── */
+.pie-section-layout {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.pie-wrapper {
+    position: relative;
+    flex: 0 0 440px;
+    height: 400px;
+}
+
+.pie-wrapper canvas {
+    cursor: pointer;  /* signal that slices are clickable */
+}
+
+/* ── Summary box beside pies ───────────────────────────────────────────── */
+.summary-box {
+    flex: 1;
+    background-color: #fdf6e3;
+    border: 1px solid #e0d4a8;
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: monospace;
+    font-size: 0.9em;
+    line-height: 1.9;
+    color: #2c3e50;
+    align-self: center;
+}
+
+.summary-box .summary-title {
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    font-size: 1em;
+    margin-bottom: 10px;
+    color: #2c3e50;
+    border-bottom: 1px solid #cbb97a;
+    padding-bottom: 6px;
+}
+
+.summary-box .summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.summary-box .summary-row span:last-child {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.summary-box .summary-divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 8px 0;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* ── Coverage table ────────────────────────────────────────────────────── */
+.coverage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    margin-top: 18px;
+}
+
+.coverage-table th {
+    background-color: #f2f2f2;
+    padding: 7px 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+    font-weight: bold;
+}
+
+.coverage-table th.col-label { text-align: left; }
+
+.coverage-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.coverage-table td.col-label {
+    text-align: left;
+    font-weight: 600;
+}
+
+.coverage-table tr:nth-child(even) td { background-color: #f9f9f9; }
+
+/* ── Abs/Fraction toggle ──────────────────────────────────────────────── */
+.chart-toggle {
+    display: flex;
+    gap: 0;
+    justify-content: center;
+    margin-bottom: 14px;
+}
+
+.chart-toggle button {
+    padding: 5px 18px;
+    font-size: 0.85em;
+    border: 1px solid #b0c4d8;
+    background: #f4f8fc;
+    color: #555;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    outline: none;
+}
+
+.chart-toggle button:first-child  { border-radius: 6px 0 0 6px; border-right: none; }
+.chart-toggle button:last-child   { border-radius: 0 6px 6px 0; }
+
+.chart-toggle button.active {
+    background: #3498db;
+    color: #fff;
+    border-color: #2176ae;
+    font-weight: 600;
+}
+
+.chart-toggle button:not(.active):hover {
+    background: #e2eef8;
+}
+
+/* ── Protein list panel (shared, appears below pie sections) ───────────── */
+.protein-list-panel {
+    background: #f0f7ff;
+    border: 1px solid #b8d9f5;
+    border-radius: 8px;
+    margin-top: 18px;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease, padding 0.2s ease;
+    padding: 0 20px;
+}
+
+.protein-list-panel.open {
+    max-height: 600px;   /* tall enough for any realistic list */
+    padding: 16px 20px;
+    overflow-y: auto;
+}
+
+.protein-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+}
+
+.protein-list-header h3 {
+    font-size: 0.92em;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.protein-list-close {
+    font-size: 0.8em;
+    color: #888;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+    background: #fff;
+}
+
+.protein-list-close:hover { background: #eee; }
+
+.protein-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84em;
+}
+
+.protein-list-table th {
+    background: #dceeff;
+    padding: 6px 10px;
+    text-align: left;
+    border: 1px solid #b8d9f5;
+    font-weight: 600;
+}
+
+.protein-list-table td {
+    padding: 5px 10px;
+    border: 1px solid #cce3f5;
+}
+
+.protein-list-table tr:nth-child(even) td { background: #e8f4ff; }
+
+.protein-list-table a {
+    color: #2471a3;
+    text-decoration: none;
+}
+
+.protein-list-table a:hover { text-decoration: underline; }
+
+/* ── Per-method small-multiple histograms (section 9) ───────────────────── */
+.method-hist-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.method-hist-panel {
+    background: #f8f9fa;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 12px 10px 8px;
+    box-sizing: border-box;
+}
+
+.method-hist-title {
+    font-size: 0.83em;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #2c3e50;
+}
+
+.method-hist-title .h-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.method-hist-canvas {
+    position: relative;
+    width: 100%;
+    height: 210px;
+}
+
+.method-hist-stats {
+    font-size: 0.73em;
+    color: #999;
+    margin-top: 5px;
+    text-align: center;
+}

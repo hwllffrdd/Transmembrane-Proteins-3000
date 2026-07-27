@@ -16,6 +16,22 @@ os.makedirs('batch_results', exist_ok=True)
 # Dictionary to store batch results in memory (for development purposes)
 batch_storage = {}
 
+
+def _load_uniprot_snapshot(path='uniprot_snapshot.json'):
+    """Load the local UniProt snapshot (see download_uniprot_snapshot.py) into
+    an accession -> protein dict, so the batch tool doesn't have to hit the
+    live UniProt API for every accession."""
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            snapshot = json.load(f)
+        return {p['accession']: p for p in snapshot.get('proteins', [])}
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        print(f"Warning: could not load {path}: {e}")
+        return {}
+
+
+UNIPROT_SNAPSHOT = _load_uniprot_snapshot()
+
 def get_uniprot_data(query, is_accession=False):
     organism_id = "9606"
     reviewed = "true"
@@ -90,36 +106,43 @@ def get_uniprot_data(query, is_accession=False):
     return results
 
 def get_batch_uniprot_data(accessions):
+    """
+    Look up UniProt annotation data for a list of accessions from the local
+    uniprot_snapshot.json snapshot (see download_uniprot_snapshot.py), rather
+    than querying the live UniProt API for each one.
+    """
     results = []
     not_found = []
-    batch_size = 10
-    
-    for i in range(0, len(accessions), batch_size):
-        batch_accessions = accessions[i:i+batch_size]
-        
-        for accession in batch_accessions:
-            try:
-                protein_data = get_uniprot_data(accession, is_accession=True)
-                
-                if protein_data and len(protein_data) > 0:
-                    for result in protein_data:
-                        transmembrane_regions = result.get("transmembrane_regions", [])
-                        if not transmembrane_regions:
-                            uniprot_count = 0
-                            uniprot_regions = ""
-                        else:
-                            uniprot_count = len(transmembrane_regions)
-                            uniprot_regions = ", ".join([f"{start}-{end}" for start, end in transmembrane_regions])
-                        
-                        result["uniprot_count"] = uniprot_count
-                        result["uniprot_regions"] = uniprot_regions
-                        results.append(result)
-                else:
-                    not_found.append(accession)
-            except Exception as e:
-                print(f"Error processing accession {accession}: {e}")
-                not_found.append(accession)
-    
+
+    for accession in accessions:
+        entry = UNIPROT_SNAPSHOT.get(accession) or UNIPROT_SNAPSHOT.get(accession.upper())
+
+        if not entry:
+            not_found.append(accession)
+            continue
+
+        transmembrane_regions = [tuple(r) for r in entry.get('tm_regions', [])]
+        sequence_length = entry.get('sequence_length', 0)
+
+        if not transmembrane_regions:
+            feature_info = "0 transmembrane helical regions"
+        else:
+            tm_percentage = calculate_tm_percentage(transmembrane_regions, sequence_length)
+            feature_info = f"{len(transmembrane_regions)} transmembrane helical region{'s' if len(transmembrane_regions) != 1 else ''}: "
+            feature_info += ", ".join([f"{start}-{end}" for start, end in transmembrane_regions])
+            feature_info += f"; comprise {tm_percentage:.1f}% of the sequence"
+
+        results.append({
+            "name": entry.get('protein_name') or "Unknown",
+            "gene_name": entry.get('gene_name') or "Unknown",
+            "accession": entry.get('accession', accession),
+            "feature_info": feature_info,
+            "sequence_length": sequence_length,
+            "transmembrane_regions": transmembrane_regions,
+            "uniprot_count": len(transmembrane_regions),
+            "uniprot_regions": ", ".join([f"{start}-{end}" for start, end in transmembrane_regions]),
+        })
+
     return results, not_found
 
 def calculate_tm_percentage(tm_regions, sequence_length):

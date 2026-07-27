@@ -42,43 +42,9 @@
         <p class="chart-note">Proteins with 0 TM helices are excluded. Counts above 12 are grouped into the "12+" category.</p>
     </div>
 
-    <!-- 3 · TM helix count — fractions + table -->
+    <!-- 3+4 · TM helix count — unified toggled chart -->
     <div class="section">
-        <h2>TM Helix Count Distribution: Dataset vs. Human Proteome (Fractions)</h2>
-        <div class="chart-legend">
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
-                <span>This dataset (avg across methods)</span>
-            </div>
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
-                <span>Human proteome (avg across methods)</span>
-            </div>
-        </div>
-        <div class="chart-wrapper">
-            <canvas id="fraction-chart"></canvas>
-        </div>
-        <table class="coverage-table">
-            <thead>
-                <tr>
-                    <th class="col-label">TM helices</th>
-                    <th>Dataset fraction</th>
-                    <th>Proteome fraction</th>
-                    <th>Ratio (dataset / proteome)</th>
-                </tr>
-            </thead>
-            <tbody id="fraction-tbody"></tbody>
-        </table>
-        <p class="chart-note">
-            Y-axis: fraction of each reference population at that TM helix count.
-            Dataset fractions computed from batch results; proteome fractions are hardcoded reference values.
-            Both averaged across the five prediction methods.
-        </p>
-    </div>
-
-    <!-- 4 · TM helix count — absolute counts + table -->
-    <div class="section">
-        <h2>Proteome Coverage by TM Helix Count</h2>
+        <h2 id="count-unified-title">Proteome Coverage by TM Helix Count</h2>
         <div class="chart-legend">
             <div class="chart-legend-item">
                 <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
@@ -89,91 +55,77 @@
                 <span>Human proteome (avg across methods)</span>
             </div>
         </div>
-        <div class="chart-wrapper">
-            <canvas id="coverage-chart"></canvas>
+        <div class="chart-toggle">
+            <button id="count-btn-abs">Absolute counts</button>
+            <button id="count-btn-frac">Fractions</button>
         </div>
-        <table class="coverage-table">
-            <thead>
-                <tr>
-                    <th class="col-label">TM helices</th>
-                    <th>Proteome (avg)</th>
-                    <th>Dataset (avg)</th>
-                    <th>Dataset coverage</th>
-                </tr>
-            </thead>
-            <tbody id="coverage-tbody"></tbody>
+        <div class="chart-wrapper">
+            <canvas id="count-unified-chart"></canvas>
+        </div>
+        <!-- Absolute table (visible by default) -->
+        <table class="coverage-table" id="count-abs-table">
+            <thead><tr>
+                <th class="col-label">TM helices</th>
+                <th>Proteome (avg)</th>
+                <th>Dataset (avg)</th>
+                <th>Dataset coverage</th>
+            </tr></thead>
+            <tbody id="count-abs-tbody"></tbody>
         </table>
-        <p class="chart-note">
-            Both bars and table values are averages across the five prediction methods.
-            "Dataset coverage" is the percentage of the proteome bin represented by the dataset.
-        </p>
+        <!-- Fractions table (hidden by default) -->
+        <table class="coverage-table" id="count-frac-table" style="display:none">
+            <thead><tr>
+                <th class="col-label">TM helices</th>
+                <th>Dataset fraction</th>
+                <th>Proteome fraction</th>
+                <th>Ratio (dataset / proteome)</th>
+            </tr></thead>
+            <tbody id="count-frac-tbody"></tbody>
+        </table>
+        <p class="chart-note" id="count-unified-note"></p>
     </div>
 
-    <!-- 5 · % sequence coverage — fractions + table -->
+    <!-- 5+6 · % sequence coverage — unified toggled chart -->
     <div class="section">
-        <h2>TM Region Coverage Distribution: Dataset vs. Human Proteome (Fractions)</h2>
+        <h2 id="pct-unified-title">Distribution of TM Region Coverage (% of Sequence)</h2>
         <div class="chart-legend">
             <div class="chart-legend-item">
                 <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
                 <span>This dataset (avg across methods)</span>
             </div>
             <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
+                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.45);border:1px solid #555;"></div>
                 <span>Human proteome (avg across methods)</span>
             </div>
         </div>
-        <div class="chart-wrapper">
-            <canvas id="pct-fraction-chart"></canvas>
-        </div>
-        <table class="coverage-table">
-            <thead>
-                <tr>
-                    <th class="col-label">% of sequence</th>
-                    <th>Dataset fraction</th>
-                    <th>Proteome fraction</th>
-                    <th>Ratio (dataset / proteome)</th>
-                </tr>
-            </thead>
-            <tbody id="pct-fraction-tbody"></tbody>
-        </table>
-        <p class="chart-note">
-            Y-axis: fraction of each reference IMP population in that % coverage bin.
-            Both averaged across the five prediction methods.
-        </p>
-    </div>
-
-    <!-- 6 · % sequence coverage — absolute counts + table -->
-    <div class="section">
-        <h2>Distribution of TM Region Coverage (% of Sequence)</h2>
-        <div class="chart-legend">
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:#3498dbbb;border:1px solid #3498db;"></div>
-                <span>This dataset (avg across methods)</span>
-            </div>
-            <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background:rgba(80,80,80,0.55);border:1px solid #555;"></div>
-                <span>Human proteome (avg across methods)</span>
-            </div>
+        <div class="chart-toggle">
+            <button id="pct-btn-abs">Absolute counts</button>
+            <button id="pct-btn-frac">Fractions</button>
         </div>
         <div class="chart-wrapper">
-            <canvas id="pct-coverage-chart"></canvas>
+            <canvas id="pct-unified-chart"></canvas>
         </div>
-        <table class="coverage-table">
-            <thead>
-                <tr>
-                    <th class="col-label">% of sequence</th>
-                    <th>Proteome (avg)</th>
-                    <th>Dataset (avg)</th>
-                    <th>Dataset coverage</th>
-                </tr>
-            </thead>
-            <tbody id="pct-coverage-tbody"></tbody>
+        <!-- Absolute table (visible by default) -->
+        <table class="coverage-table" id="pct-abs-table">
+            <thead><tr>
+                <th class="col-label">% of sequence</th>
+                <th>Proteome (avg)</th>
+                <th>Dataset (avg)</th>
+                <th>Dataset coverage</th>
+            </tr></thead>
+            <tbody id="pct-abs-tbody"></tbody>
         </table>
-        <p class="chart-note">
-            Y-axis: number of proteins in each % coverage bin (5 pp wide).
-            Dataset values are averaged across all five prediction methods.
-            Proteome reference values are hardcoded — only proteins with at least one TM helix predicted are included.
-        </p>
+        <!-- Fractions table (hidden by default) -->
+        <table class="coverage-table" id="pct-frac-table" style="display:none">
+            <thead><tr>
+                <th class="col-label">% of sequence</th>
+                <th>Dataset fraction</th>
+                <th>Proteome fraction</th>
+                <th>Ratio (dataset / proteome)</th>
+            </tr></thead>
+            <tbody id="pct-frac-tbody"></tbody>
+        </table>
+        <p class="chart-note" id="pct-unified-note"></p>
     </div>
 
     <!-- 7 · Method agreement pie -->
@@ -236,6 +188,15 @@
                 <tbody id="cons-panel-tbody"></tbody>
             </table>
         </div>
+    </div>
+
+    <!-- 9 · Per-method % coverage small multiples -->
+    <div class="section">
+        <h2>Per-Method % Sequence Coverage Distribution</h2>
+        <p class="chart-note" style="margin-bottom:12px;margin-top:0;">
+            Each panel shows one method's own distribution of TM region coverage; the grey bars are the pooled average across all five methods.
+        </p>
+        <div class="method-hist-grid" id="method-hist-grid"></div>
     </div>
 
     <!--
