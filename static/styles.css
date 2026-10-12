@@ -23,47 +23,49 @@ form {
     margin-bottom: 20px;
 }
 
-/* Tab styling */
-.search-tabs {
+.hint {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* ── Index page ────────────────────────────────────────────────────────── */
+.intro {
+    max-width: 900px;
+}
+
+.search-columns {
     display: flex;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #ccc;
+    flex-wrap: wrap;
+    gap: 30px;
+    margin: 20px 0;
 }
 
-.tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    border-bottom: none;
-    margin-right: 5px;
-    border-radius: 5px 5px 0 0;
-    color: #000;
-}
-
-.tab-button.active {
-    background-color: #fff;
-    border-bottom: 1px solid #fff;
-    margin-bottom: -1px;
-    font-weight: bold;
-    color: #000;
-}
-
-.tab-content {
-    display: none;
+.search-box {
+    flex: 1 1 380px;
     padding: 20px;
     border: 1px solid #ccc;
-    border-top: none;
     background-color: #fff;
 }
 
-.tab-content.active {
-    display: block;
+.search-box h2 {
+    margin-top: 0;
+}
+
+.references {
+    font-size: 0.85rem;
+    color: #444;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+}
+
+.references p {
+    margin: 6px 0;
 }
 
 /* Form styling */
 input[type="text"], textarea {
     width: 100%;
+    box-sizing: border-box;
     padding: 8px;
     margin-bottom: 15px;
     border: 1px solid #ccc;
@@ -81,6 +83,27 @@ button {
 
 button:hover {
     background-color: #45a049;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: default;
+}
+
+.secondary-button {
+    background-color: #888;
+}
+
+.secondary-button:hover {
+    background-color: #777;
+}
+
+.stats-button {
+    background-color: #8e44ad;
+}
+
+.stats-button:hover {
+    background-color: #7d3c98;
 }
 
 label {
@@ -110,47 +133,332 @@ label {
     100% { transform: rotate(360deg); }
 }
 
-/* Results table styling */
+/* ── Results pages ─────────────────────────────────────────────────────── */
+#query-summary {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
 .batch-results-container {
     margin-top: 20px;
 }
 
-.batch-results-table {
-    width: 100%;
-    border-collapse: collapse;
+.not-found {
+    background-color: #f8d7da;
+    padding: 10px 20px;
+    margin-bottom: 20px;
 }
 
-.batch-results-table th {
-    background-color: #f2f2f2;
-    text-align: left;
-    padding: 10px;
-    border: 1px solid #ddd;
+.not-found h3 {
+    margin: 6px 0;
 }
 
-.batch-results-table td {
-    padding: 8px;
-    border: 1px solid #ddd;
+.not-found p {
+    margin: 6px 0;
 }
 
-.batch-results-table tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-.sub-header {
-    font-weight: normal;
-    font-size: 0.85em;
-    border-top: 1px solid #ddd;
+.export-options {
+    margin: 20px 0;
+    /* Anchors .quick-summary-panel, which floats below the "Quick Summary" button */
+    position: relative;
 }
 
 .export-button {
-    margin-top: 20px;
     margin-right: 10px;
 }
 
-/* Protein visualization styles */
+/* "Quick Summary" floating panel */
+.quick-summary-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    margin-top: 6px;
+    min-width: 300px;
+    max-width: 380px;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    padding: 12px 16px;
+}
+
+.quick-summary-panel.open {
+    display: block;
+}
+
+.quick-summary-table {
+    font-size: 0.85rem;
+}
+
+.quick-summary-table th,
+.quick-summary-table td {
+    padding: 4px 8px;
+}
+
+.th-note {
+    font-weight: normal;
+    font-size: 0.78em;
+    color: #888;
+    display: block;
+    margin-top: 2px;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Shared header/close control for floating and expandable panels */
+.protein-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+}
+
+.protein-list-header h3 {
+    font-size: 0.95em;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.protein-list-close {
+    font-size: 0.8em;
+    color: #888;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+    background: #fff;
+}
+
+.protein-list-close:hover { background: #eee; }
+
+.checkbox-label {
+    font-weight: normal;
+}
+
+/* Pagination */
+.pagination-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.pagination-controls,
+.page-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.page-button {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+}
+
+.page-number {
+    padding: 2px 8px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 0;
+}
+
+.page-number:hover {
+    background: #eef;
+}
+
+.page-number.active {
+    background: #333;
+    border-color: #333;
+    color: #fff;
+    font-weight: bold;
+    cursor: default;
+}
+
+.page-ellipsis {
+    color: #999;
+    padding: 0 2px;
+}
+
+/* Shown/hidden by JS toggling the inline display style */
+.page-jump {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.page-jump label {
+    margin: 0;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.page-jump input[type="number"] {
+    width: 58px;
+    padding: 2px 6px;
+}
+
+/* Results table. Fixed column widths (from the <colgroup>) so that widths
+   don't shift every time sorting/paging swaps in rows with shorter or
+   longer values. */
+.batch-results-table {
+    table-layout: fixed;
+    width: 1296px;
+    font-size: 0.85rem;
+}
+
+.batch-results-table col:nth-child(1)    { width: 220px; }
+.batch-results-table col:nth-child(3n+2) { width: 59px; }  /* Count */
+.batch-results-table col:nth-child(3n)   { width: 96px; }  /* Regions */
+.batch-results-table col:nth-child(3n+4) { width: 55px; }  /* %seq */
+
+.batch-results-table th {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.batch-results-table td {
+    overflow-wrap: break-word;
+}
+
+.batch-results-table tr:nth-child(4n+1) > td {
+    background-color: #f9f9f9;
+}
+
+/* Sticky two-row table header. The first row's height is measured by JS
+   into --thead-row1-height so the second row sits right below it. */
+:root {
+    --thead-row1-height: 34px; /* fallback, corrected by JS */
+}
+
+.batch-results-table thead th {
+    position: sticky;
+    z-index: 10;
+    background-color: #f2f2f2;
+}
+
+.batch-results-table thead tr:first-child th {
+    top: 0;
+}
+
+.batch-results-table thead tr:last-child th {
+    top: var(--thead-row1-height);
+}
+
+/* Protein identity cell */
+.protein-identity {
+    line-height: 1.35;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.prot-name {
+    font-weight: bold;
+    display: block;
+}
+
+.prot-gene {
+    color: #666;
+    display: block;
+}
+
+.prot-acc {
+    color: #000;
+    display: block;
+    font-family: monospace;
+}
+
+/* Clickable data rows (batch results and stats protein lists) */
+tr.data-row {
+    cursor: pointer;
+}
+
+tr.data-row:hover td {
+    background-color: #eaf2fb !important;
+}
+
+.expand-indicator {
+    font-size: 0.75rem;
+    color: #888;
+    margin-top: 4px;
+    display: block;
+    user-select: none;
+}
+
+tr.data-row.open .expand-indicator {
+    color: #3498db;
+}
+
+/* Sortable column headers — active column is highlighted */
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.sortable-th:hover {
+    background-color: #e2e2e2 !important;
+}
+
+.sortable-th.sorted {
+    background-color: #d6dde6 !important;
+}
+
+/* Visualiser row: hidden by default */
+tr.visualizer-row {
+    display: none;
+}
+
+tr.visualizer-row.open {
+    display: table-row;
+}
+
+tr.visualizer-row > td {
+    padding: 0 !important;
+    border-top: none !important;
+    background-color: #fff;
+}
+
+/* Smooth expand */
+.viz-inner {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.25s ease, padding 0.2s ease;
+    padding: 0 12px;
+    box-sizing: border-box;
+}
+
+tr.visualizer-row.open .viz-inner {
+    max-height: 600px;
+    padding: 10px 12px 16px;
+}
+
+/* ── Protein visualization ─────────────────────────────────────────────── */
 .protein-visualization {
     width: 100%;
-    padding: 10px 0;
+    box-sizing: border-box;
+    background-color: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 5px;
 }
 
 .protein-bar {
@@ -161,6 +469,7 @@ label {
     border-radius: 5px;
     overflow: hidden;
     box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
+    border: 1px solid #ddd;
 }
 
 .region-label {
@@ -182,124 +491,11 @@ label {
     border: 1px solid rgba(0,0,0,0.1);
 }
 
-.uniprot-label::before {
-    background-color: #3498db;
-}
-
-.phobius-label::before {
-    background-color: #e74c3c;
-}
-
-.deeptmhmm-label::before {
-    background-color: #2ecc71;
-}
-
-.tmbed-label::before {
-    background-color: #9b59b6;
-}
-
-.topcons-label::before {
-    background-color: #f39c12;
-}
-
-.tm-region {
-    position: absolute;
-    height: 100%;
-    border-radius: 3px;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.tm-region:hover {
-    transform: scaleY(1.1);
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
-    z-index: 1;
-}
-
-.uniprot-region {
-    background-color: #3498db;
-}
-
-.phobius-region {
-    background-color: #e74c3c;
-}
-
-.deeptmhmm-region {
-    background-color: #2ecc71;
-}
-
-.tmbed-region {
-    background-color: #9b59b6;
-}
-
-.topcons-region {
-    background-color: #f39c12;
-}
-
-.visualizer-title {
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.visualizer-row {
-    border-top: 1px solid #ddd;
-    padding-top: 15px;
-}
-
-.sequence-info {
-    font-size: 11px;
-    color: #666;
-    margin-top: 2px;
-}
-
-/* Styles for protein visualization */
-.protein-visualization {
-    background-color: #fafafa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 10px;
-}
-
-.protein-bar {
-    position: relative;
-    height: 25px;
-    background-color: #f0f0f0;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    overflow: hidden;
-    box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
-    border: 1px solid #ddd;
-}
-
-.region-label {
-    font-size: 12px;
-    margin-bottom: 3px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-}
-
-.region-label::before {
-    content: '';
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-right: 5px;
-    border-radius: 2px;
-}
-
-.uniprot-label::before {
-    background-color: #3498db;
-}
-
-.phobius-label::before {
-    background-color: #e74c3c;
-}
-
-.deeptmhmm-label::before {
-    background-color: #2ecc71;
-}
+.uniprot-label::before   { background-color: #3498db; }
+.phobius-label::before   { background-color: #e74c3c; }
+.deeptmhmm-label::before { background-color: #2ecc71; }
+.tmbed-label::before     { background-color: #9b59b6; }
+.topcons-label::before   { background-color: #f39c12; }
 
 .tm-region {
     position: absolute;
@@ -316,72 +512,26 @@ label {
     opacity: 0.9;
 }
 
-.uniprot-region {
-    background-color: #3498db;
+/* Brief flash on click, confirming the region's text was copied. */
+.tm-region.copied {
+    outline: 2px solid #2ecc71;
+    outline-offset: 1px;
 }
 
-.phobius-region {
-    background-color: #e74c3c;
-}
-
-.deeptmhmm-region {
-    background-color: #2ecc71;
-}
-
-.tmbed-region {
-    background-color: #9b59b6;
-}
-
-.topcons-region {
-    background-color: #f39c12;
-}
-
-/* TMBED-specific styling */
-.tmbed-label::before {
-    background-color: #9b59b6; /* Purple color for TMBED */
-}
-
-.tmbed-region {
-    background-color: #9b59b6; /* Purple color for TMBED regions */
-}
-
-.visualizer-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #2c3e50;
-    font-size: 14px;
-}
-
-.visualizer-row {
-    border-top: 1px solid #ddd;
-    padding-top: 15px;
-}
+.uniprot-region   { background-color: #3498db; }
+.phobius-region   { background-color: #e74c3c; }
+.deeptmhmm-region { background-color: #2ecc71; }
+.tmbed-region     { background-color: #9b59b6; }
+.topcons-region   { background-color: #f39c12; }
 
 .sequence-info {
     font-size: 11px;
     color: #666;
-    margin-top: 15px;
+    margin-bottom: 10px;
 }
 
-.prediction-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 10px;
-    padding: 10px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    font-size: 12px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-}
-
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    margin-right: 5px;
+.sequence-note {
+    font-size: 11px;
+    color: #666;
+    margin-top: 6px;
 }

@@ -2,294 +2,137 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Batch Results - Transmembrane Proteins 3000</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human IMPs — Batch Results</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <style>
-        .stats-button {
-            background-color: #8e44ad;
-        }
-        .stats-button:hover {
-            background-color: #7d3c98;
-        }
-
-        /* Stacked protein identity cell */
-        .protein-identity {
-            min-width: 160px;
-            max-width: 220px;
-            line-height: 1.4;
-        }
-        .prot-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-            display: block;
-        }
-        .prot-gene {
-            font-size: 0.78rem;
-            color: #666;
-            display: block;
-        }
-        .prot-acc {
-            font-size: 0.75rem;
-            color: #999;
-            display: block;
-            font-family: monospace;
-        }
-        .expand-indicator {
-            font-size: 0.7rem;
-            color: #aaa;
-            margin-top: 3px;
-            display: block;
-            cursor: pointer;
-        }
-        tr.data-row.open .expand-indicator {
-            color: #3498db;
-        }
-
-        /* Clickable data rows */
-        tr.data-row {
-            cursor: pointer;
-            user-select: none;
-        }
-        tr.data-row:hover td {
-            background-color: #eaf2fb !important;
-        }
-
-        /* Visualiser row: hidden by default */
-        tr.visualizer-row {
-            display: none;
-        }
-        tr.visualizer-row.open {
-            display: table-row;
-        }
-        tr.visualizer-row > td {
-            padding: 0 !important;
-            border-top: none !important;
-        }
-
-        /* Smooth expand */
-        .viz-inner {
-            overflow: hidden;
-            max-height: 0;
-            transition: max-height 0.25s ease, padding 0.2s ease;
-            padding: 0 12px;
-            box-sizing: border-box;
-        }
-        tr.visualizer-row.open .viz-inner {
-            max-height: 600px;
-            padding: 10px 12px 16px;
-        }
-
-        /* Ensure the protein bar never overflows its cell */
-        .viz-inner .protein-visualization {
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .viz-inner .protein-bar {
-            width: 100%;
-            box-sizing: border-box;
-            overflow: hidden;    /* clip any region that nudges past the right edge */
-            position: relative;
-        }
-    </style>
 </head>
 <body>
-    <h1>Transmembrane Proteins 3000 - Batch Results</h1>
-    
-    <div class="batch-results-container">
-        <div class="summary">
-            <p>Processed {{ total_accessions }} accession{{ "s" if total_accessions != 1 else "" }}, found {{ results|length }} result{{ "s" if results|length != 1 else "" }}.</p>
-            <p style="font-size:0.85rem; color:#666;">Click any row to expand the transmembrane region visualisation for that protein.</p>
+    <h1>Human IMPs</h1>
+    <h2>Batch Processing Results</h2>
 
-            {% if not_found_accessions %}
-            <div class="not-found">
-                <h3>Accessions not found:</h3>
-                <p>{{ not_found_accessions|join(", ") }}</p>
+    <div class="batch-results-container">
+        <p id="query-summary"></p>
+
+        {% if not_found_accessions %}
+        <div class="not-found">
+            <h3>Accessions not found:</h3>
+            <p>{{ not_found_accessions|join(", ") }}</p>
+            <p>Only valid & reviewed Uniprot Accessions belonging to the current human proteome are permissible.</p>
+        </div>
+        {% endif %}
+
+        <div class="export-options">
+            <button type="button" id="quick-summary-btn">Quick Summary</button>
+            <div class="quick-summary-panel" id="quick-summary-panel">
+                <div class="protein-list-header">
+                    <h3>Quick Statistics</h3>
+                    <span class="protein-list-close" id="quick-summary-close">&#x2715; close</span>
+                </div>
+                <p class="hint">Per-method overview of transmembrane (TM) helix predictions across this batch.</p>
+                <table class="quick-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>IMPs<span class="th-note">in your dataset</span></th>
+                            <th>% IMPs<span class="th-note">in your dataset</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="quick-stats-tbody"></tbody>
+                </table>
             </div>
-            {% endif %}
-            
-            <div class="export-options">
-                <a href="{{ url_for('export_batch', batch_id=batch_id, format='csv') }}" class="export-button">
-                    <button>Export as CSV</button>
-                </a>
-                <a href="{{ url_for('export_batch', batch_id=batch_id, format='tsv') }}" class="export-button">
-                    <button>Export as TSV</button>
-                </a>
-                <a href="{{ url_for('batch_stats', batch_id=batch_id) }}" target="_blank" class="export-button">
-                    <button class="stats-button">Generate statistics</button>
-                </a>
+            <a href="{{ url_for('export_batch', batch_id=batch_id, format='csv') }}" class="export-button">
+                <button type="button">Export as CSV</button>
+            </a>
+            <a href="{{ url_for('export_batch', batch_id=batch_id, format='tsv') }}" class="export-button">
+                <button type="button">Export as TSV</button>
+            </a>
+            <a href="{{ url_for('batch_stats', batch_id=batch_id) }}" target="_blank" class="export-button">
+                <button type="button" class="stats-button">Generate statistics</button>
+            </a>
+            <a href="{{ url_for('index') }}" class="export-button">
+                <button type="button">New Search</button>
+            </a>
+        </div>
+
+        <label class="checkbox-label">
+            <input type="checkbox" id="hide-zero-tm" checked>
+            Show only integral membrane proteins
+        </label>
+
+        <p class="hint">
+            Click any row to expand the transmembrane region visualisation for that protein.<br>
+            <b>Counts</b>: Count of transmembrane helices; <b>Regions</b>: aminoacid positions in protein sequences;
+            <b>%seq</b>: percentage of sequence that is within transmembrane regions.
+        </p>
+
+        <div class="pagination-bar">
+            <div class="pagination-info">
+                Showing <span id="page-range-start">0</span>&ndash;<span id="page-range-end">0</span> of <span id="page-range-total">0</span> results
+            </div>
+            <div class="pagination-controls">
+                <button type="button" id="page-prev" class="page-button">Previous</button>
+                <div id="page-numbers" class="page-numbers"></div>
+                <button type="button" id="page-next" class="page-button">Next</button>
+                <div id="page-jump" class="page-jump" style="display:none;">
+                    <label for="page-jump-input">Jump to page</label>
+                    <input type="number" id="page-jump-input" min="1" step="1" inputmode="numeric">
+                    <button type="button" id="page-jump-go" class="page-button">Go</button>
+                </div>
             </div>
         </div>
-        
-        <table class="batch-results-table">
-            <thead>
-                <tr>
-                    <th rowspan="2">Protein</th>
-                    <th colspan="3">UniProt Transmembrane Features</th>
-                    <th colspan="3">Phobius Transmembrane Features</th>
-                    <th colspan="3">DeepTMHMM Transmembrane Features</th>
-                    <th colspan="3">TMBED Transmembrane Features</th>
-                    <th colspan="3">TOPCONS Transmembrane Features</th>
-                </tr>
-                <tr>
-                    <th><div class="sub-header">Count</div></th>
-                    <th><div class="sub-header">Regions</div></th>
-                    <th><div class="sub-header">% of sequence</div></th>
 
-                    <th><div class="sub-header">Count</div></th>
-                    <th><div class="sub-header">Regions</div></th>
-                    <th><div class="sub-header">% of sequence</div></th>
+        <div class="batch-results-table-wrapper">
+            <table class="batch-results-table">
+                <colgroup>
+                    <col>
+                    <col><col><col>
+                    <col><col><col>
+                    <col><col><col>
+                    <col><col><col>
+                    <col><col><col>
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="sortable-th" data-sort-key="name">Protein</th>
+                        <th colspan="3">UniProt</th>
+                        <th colspan="3">Phobius</th>
+                        <th colspan="3">DeepTMHMM</th>
+                        <th colspan="3">TMBED</th>
+                        <th colspan="3">TOPCONS</th>
+                    </tr>
+                    <tr>
+                        <th class="sortable-th" data-sort-key="uniprot-count" title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th class="sortable-th" data-sort-key="uniprot-pct" title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                        <th class="sortable-th" data-sort-key="phobius-count" title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th class="sortable-th" data-sort-key="phobius-pct" title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                        <th class="sortable-th" data-sort-key="deeptmhmm-count" title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th class="sortable-th" data-sort-key="deeptmhmm-pct" title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                        <th class="sortable-th" data-sort-key="tmbed-count" title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th class="sortable-th" data-sort-key="tmbed-pct" title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                        <th class="sortable-th" data-sort-key="topcons-count" title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th class="sortable-th" data-sort-key="topcons-pct" title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Rows are rendered client-side (see batch_results.js) from
+                         the JSON payload, one page (100 rows) at a time. -->
+                </tbody>
+            </table>
+        </div>
 
-                    <th><div class="sub-header">Count</div></th>
-                    <th><div class="sub-header">Regions</div></th>
-                    <th><div class="sub-header">% of sequence</div></th>
-
-                    <th><div class="sub-header">Count</div></th>
-                    <th><div class="sub-header">Regions</div></th>
-                    <th><div class="sub-header">% of sequence</div></th>
-
-                    <th><div class="sub-header">Count</div></th>
-                    <th><div class="sub-header">Regions</div></th>
-                    <th><div class="sub-header">% of sequence</div></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for result in results %}
-
-                {#
-                  data-regions contains clean [start, end] integer pairs from the
-                  dedicated *_regions_list fields, not the display strings.
-                #}
-                <tr class="data-row"
-                    data-target="viz-{{ loop.index }}"
-                    data-rendered="false"
-                    data-seq-len="{{ result.sequence_length }}"
-                    data-regions='{{ {
-                        "uniprot":   result.uniprot_regions_list,
-                        "phobius":   result.phobius_regions_list,
-                        "deeptmhmm": result.deeptmhmm_regions_list,
-                        "tmbed":     result.tmbed_regions_list,
-                        "topcons":   result.topcons_regions_list
-                    } | tojson }}'>
-
-                    <td class="protein-identity">
-                        <a class="prot-name"
-                           href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry"
-                           target="_blank"
-                           onclick="event.stopPropagation()">{{ result.name }}</a>
-                        <span class="prot-gene">{{ result.gene_name }}</span>
-                        <a class="prot-acc"
-                           href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry"
-                           target="_blank"
-                           onclick="event.stopPropagation()">{{ result.accession }}</a>
-                        <span class="expand-indicator">&#9660; show visualisation</span>
-                    </td>
-
-                    <td>{{ result.uniprot_count }}</td>
-                    <td>{{ result.uniprot_regions }}</td>
-                    <td>{{ result.uniprot_percentage }}</td>
-
-                    <td>{{ result.phobius_count }}</td>
-                    <td>{{ result.phobius_regions }}</td>
-                    <td>{{ result.phobius_percentage }}</td>
-
-                    <td>{{ result.deeptmhmm_count }}</td>
-                    <td>{{ result.deeptmhmm_regions }}</td>
-                    <td>{{ result.deeptmhmm_percentage }}</td>
-
-                    <td>{{ result.tmbed_count }}</td>
-                    <td>{{ result.tmbed_regions }}</td>
-                    <td>{{ result.tmbed_percentage }}</td>
-
-                    <td>{{ result.topcons_count }}</td>
-                    <td>{{ result.topcons_regions }}</td>
-                    <td>{{ result.topcons_percentage }}</td>
-                </tr>
-
-                <tr class="visualizer-row" id="viz-{{ loop.index }}">
-                    <td colspan="16">
-                        <div class="viz-inner">
-                            <div class="protein-visualization" id="viz-content-{{ loop.index }}">
-                                <!-- rendered by JS on first expand -->
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div class="navigation">
-            <a href="{{ url_for('index') }}">
-                <button>Back to Search</button>
-            </a>
+        <div class="pagination-bar">
+            <div class="pagination-info">
+                Showing <span id="page-range-start-bottom">0</span>&ndash;<span id="page-range-end-bottom">0</span> of <span id="page-range-total-bottom">0</span> results
+            </div>
+            <div class="pagination-controls">
+                <button type="button" id="page-prev-bottom" class="page-button">Previous</button>
+                <div id="page-numbers-bottom" class="page-numbers"></div>
+                <button type="button" id="page-next-bottom" class="page-button">Next</button>
+                <div id="page-jump-bottom" class="page-jump" style="display:none;">
+                    <label for="page-jump-input-bottom">Jump to page</label>
+                    <input type="number" id="page-jump-input-bottom" min="1" step="1" inputmode="numeric">
+                    <button type="button" id="page-jump-go-bottom" class="page-button">Go</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-    const VIZ_METHODS = [
-        { key: 'uniprot',   label: 'UniProt',   cls: 'uniprot-region'   },
-        { key: 'phobius',   label: 'Phobius',   cls: 'phobius-region'   },
-        { key: 'deeptmhmm', label: 'DeepTMHMM', cls: 'deeptmhmm-region' },
-        { key: 'tmbed',     label: 'TMBED',     cls: 'tmbed-region'     },
-        { key: 'topcons',   label: 'TOPCONS',   cls: 'topcons-region'   },
-    ];
-
-    function renderViz(dataRow) {
-        const seqLen    = parseInt(dataRow.dataset.seqLen, 10);
-        const regions   = JSON.parse(dataRow.dataset.regions);
-        const idx       = dataRow.dataset.target.replace('viz-', '');
-        const container = document.getElementById('viz-content-' + idx);
-
-        if (!seqLen || seqLen === 0) {
-            container.innerHTML = '<p style="color:#999;font-size:0.82rem;">Sequence length unavailable — cannot render visualisation.</p>';
-            return;
-        }
-
-        let html = `<div class="sequence-info">Protein length: ${seqLen} amino acids</div>`;
-
-        VIZ_METHODS.forEach(method => {
-            const methodRegions = regions[method.key] || [];
-            let barsHtml = '';
-            methodRegions.forEach(region => {
-                // Each region is a [start, end] array of integers
-                const start = region[0];
-                const end   = region[1];
-                if (!Number.isFinite(start) || !Number.isFinite(end)) return;
-                const left  = (start / seqLen * 100).toFixed(3);
-                const width = ((end - start + 1) / seqLen * 100).toFixed(3);
-                barsHtml += `<div class="tm-region ${method.cls}"
-                    style="left:${left}%;width:${width}%;"
-                    title="Position ${start}–${end} (${end - start + 1} aa)"></div>`;
-            });
-            html += `<div class="region-label ${method.key}-label">${method.label}</div>
-                     <div class="protein-bar">${barsHtml}</div>`;
-        });
-
-        container.innerHTML = html;
-    }
-
-    document.querySelectorAll('tr.data-row').forEach(dataRow => {
-        dataRow.addEventListener('click', () => {
-            const vizRow    = document.getElementById(dataRow.dataset.target);
-            const indicator = dataRow.querySelector('.expand-indicator');
-            const isOpen    = dataRow.classList.contains('open');
-
-            if (isOpen) {
-                dataRow.classList.remove('open');
-                vizRow.classList.remove('open');
-                indicator.innerHTML = '&#9660; show visualisation';
-            } else {
-                if (dataRow.dataset.rendered === 'false') {
-                    renderViz(dataRow);
-                    dataRow.dataset.rendered = 'true';
-                }
-                dataRow.classList.add('open');
-                vizRow.classList.add('open');
-                indicator.innerHTML = '&#9650; hide visualisation';
-            }
-        });
-    });
-    </script>
+    <script type="application/json" id="batch-results-data" data-sequence-url-template="{{ url_for('protein_sequence', accession='__ACC__') }}">{{ results|tojson }}</script>
+    <script src="{{ url_for('static', filename='batch_results.js') }}"></script>
 </body>
 </html>

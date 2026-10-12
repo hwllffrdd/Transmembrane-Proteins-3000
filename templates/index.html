@@ -2,55 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transmembrane Proteins 3000</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human IMPs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <h1>Transmembrane Proteins 3000</h1>
-    
-    <div class="search-tabs">
-        <button class="tab-button active" onclick="openTab('single-search')">Single Search</button>
-        <button class="tab-button" onclick="openTab('batch-search')">Batch Search</button>
+    <h1>Human IMPs</h1>
+    <p class="intro">Web app integrating human proteome annotation data from Uniprot<sup>1</sup> with the results of algorithms predicting transmembrane alpha helices (Phobius<sup>2</sup>, DeepTMHMM<sup>3</sup>, TOPCONS<sup>4</sup>, TMBED<sup>5</sup>).</p>
+
+    <div class="search-columns">
+        <div class="search-box">
+            <h2>Single Query</h2>
+            <form method="POST" action="{{ url_for('index') }}">
+                <label for="query">Enter your query (protein name, e.g. 'neural cell adhesion molecule', gene name, or UniProt accession).</label>
+                <input type="text" id="query" name="query" required>
+                <input type="hidden" name="search_type" value="single">
+                <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <div class="search-box">
+            <h2>Batch Search</h2>
+            <form method="POST" action="{{ url_for('index') }}">
+                <label for="batch_query">Enter UniProt accessions (space or line separated).<br>Export to CSV, TSV, generate statistics of the dataset.</label>
+                <textarea id="batch_query" name="batch_query" rows="6" required></textarea>
+                <input type="hidden" name="search_type" value="batch">
+                <button type="submit">Process Batch</button>
+                <button type="button" class="secondary-button" onclick="document.getElementById('batch_query').value='';">Clear</button>
+            </form>
+        </div>
     </div>
-    
-    <div id="single-search" class="tab-content active">
-        <h2>Search by Protein Name, Gene, or Accession</h2>
-        <form method="POST" action="/">
-            <label for="query">Enter your query (e.g. 'neural cell adhesion molecule'):</label>
-            <input type="text" id="query" name="query" required>
-            <input type="hidden" name="search_type" value="single">
-            <button type="submit">Search</button>
-        </form>
+
+    <div class="references">
+        <p><sup>1</sup> UniProt Consortium. UniProt: the Universal Protein Knowledgebase in 2025.
+            Nucleic Acids Res. 2025;53(D1):D609-D617. doi:<a href="https://dx.doi.org/10.1093/nar/gkae1010" target="_blank">10.1093/nar/gkae1010</a></p>
+        <p><sup>2</sup> Käll L, Krogh A, Sonnhammer EL. A combined transmembrane topology and signal
+            peptide prediction method. J Mol Biol. 2004;338(5):1027-1036. doi:<a href="https://dx.doi.org/10.1016/j.jmb.2004.03.016" target="_blank">10.1016/j.jmb.2004.03.016</a></p>
+        <p><sup>3</sup> Hallgren J, Tsirigos KD, Pedersen MD, Almagro Armenteros JJ, Marcatili P,
+            Nielsen H, Krogh A, Winther O. DeepTMHMM predicts alpha and beta transmembrane proteins using deep neural
+            networks. bioRxiv 2022.04.08.487609. doi:<a href="https://dx.doi.org/10.1101/2022.04.08.487609" target="_blank">10.1101/2022.04.08.487609</a></p>
+        <p><sup>4</sup> Tsirigos KD, Peters C, Shu N, Käll L, Elofsson A. The TOPCONS web server
+            for consensus prediction of membrane protein topology and signal peptides. Nucleic Acids Res. 2015;43(W1):W401-W407.
+            doi:<a href="https://dx.doi.org/10.1093/nar/gkv485" target="_blank">10.1093/nar/gkv485</a></p>
+        <p><sup>5</sup> Bernhofer M, Rost B. TMbed: transmembrane proteins predicted through
+            language model embeddings. BMC Bioinformatics. 2022;23(1):326. doi:<a href="https://dx.doi.org/10.1186/s12859-022-04873-x" target="_blank">10.1186/s12859-022-04873-x</a></p>
     </div>
-    
-    <div id="batch-search" class="tab-content">
-        <h2>Batch Search by Accessions</h2>
-        <form method="POST" action="/batch">
-            <label for="batch_query">Enter UniProt accessions (space or line separated):</label>
-            <textarea id="batch_query" name="batch_query" rows="6" required></textarea>
-            <input type="hidden" name="search_type" value="batch">
-            <button type="submit">Process Batch</button>
-        </form>
-    </div>
-    
-    <script>
-    function openTab(tabName) {
-        // Hide all tab contents
-        var tabContents = document.getElementsByClassName("tab-content");
-        for (var i = 0; i < tabContents.length; i++) {
-            tabContents[i].classList.remove("active");
-        }
-        
-        // Remove active class from all tab buttons
-        var tabButtons = document.getElementsByClassName("tab-button");
-        for (var i = 0; i < tabButtons.length; i++) {
-            tabButtons[i].classList.remove("active");
-        }
-        
-        // Show the selected tab content and mark the button as active
-        document.getElementById(tabName).classList.add("active");
-        event.currentTarget.classList.add("active");
-    }
-    </script>
 </body>
 </html>

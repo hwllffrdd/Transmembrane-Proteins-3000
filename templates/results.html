@@ -2,117 +2,209 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transmembrane Proteins 3000</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human IMPs</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        // Function to help calculate position of transmembrane regions
-        function calculatePosition(start, end, totalLength) {
-            const leftPos = (start / totalLength) * 100;
-            const width = ((end - start + 1) / totalLength) * 100;
-            return { left: leftPos + '%', width: width + '%' };
-        }
-    </script>
 </head>
 <body>
-    <h1>Results for query: {{ query }}</h1>
-        <table>
+    <h1>Human IMPs</h1>
+    <h2>Results for query: {{ query }}</h2>
+    <p id="query-summary">{{ query_summary }}</p>
+
+    <p class="hint">
+        Counts: Count of transmembrane helices; Regions: aminoacid positions in protein sequences;
+        %seq: percentage of sequence that is within transmembrane regions.
+    </p>
+
+    <div class="batch-results-table-wrapper">
+        <table class="batch-results-table">
+            <colgroup>
+                <col>
+                <col><col><col>
+                <col><col><col>
+                <col><col><col>
+                <col><col><col>
+                <col><col><col>
+            </colgroup>
             <thead>
                 <tr>
-                    <th>Protein Name</th>
-                    <th>Gene Name</th>
-                    <th>Accession</th>
-                    <th>UniProt Transmembrane Features</th>
-                    <th>Phobius Transmembrane Features</th>
-                    <th>DeepTMHMM Transmembrane Features</th>
-                    <th>TMBED Transmembrane Features</th>
-                    <th>TOPCONS Transmembrane Features</th>
-                    <th>Protter visualization</th>
+                    <th rowspan="2">Protein</th>
+                    <th colspan="3">UniProt</th>
+                    <th colspan="3">Phobius</th>
+                    <th colspan="3">DeepTMHMM</th>
+                    <th colspan="3">TMBED</th>
+                    <th colspan="3">TOPCONS</th>
+                </tr>
+                <tr>
+                    <th title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                    <th title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                    <th title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                    <th title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th title="Percentage of sequence that is within transmembrane regions">%seq</th>
+                    <th title="Count of transmembrane helices">Count</th><th title="Amino acid positions in the protein sequence">Regions</th><th title="Percentage of sequence that is within transmembrane regions">%seq</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="results-tbody">
                 {% for result in results %}
+                {% set uniprot_url = 'https://www.uniprot.org/uniprotkb/' ~ result.accession ~ '/entry' %}
                 <tr>
-                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry">{{ result.name }}</a></td>
-                    <td>{{ result.gene_name }}</td>
-                    <td><a href="https://www.uniprot.org/uniprotkb/{{ result.accession }}/entry">{{ result.accession }}</a></td>
-                    <td>{{ result.feature_info }}</td>
-                    <td>{{ result.phobius_feature_info }}</td>
-                    <td>{{ result.deeptmhmm_feature_info }}</td>
-                    <td>{{ result.tmbed_feature_info }}</td>
-                    <td>{{ result.topcons_feature_info }}</td>
-                    <td><a href="https://wlab.ethz.ch/protter/#up={{ result.accession }}&tm=auto&mc=lightsalmon&lc=blue&tml=numcount&numbers&format=svg">link</a></td>
+                    <td class="protein-identity">
+                        <a class="prot-name" href="{{ uniprot_url }}" target="_blank" rel="noopener noreferrer">{{ result.name }}</a>
+                        <span class="prot-gene">{{ result.gene_name }}</span>
+                        <a class="prot-acc" href="{{ uniprot_url }}" target="_blank" rel="noopener noreferrer">{{ result.accession }}</a>
+                    </td>
+                    <td>{{ result.uniprot_count }}</td>
+                    <td>{{ result.uniprot_regions }}</td>
+                    <td>{{ result.uniprot_percentage }}</td>
+                    <td>{{ result.phobius_count }}</td>
+                    <td>{{ result.phobius_regions_str }}</td>
+                    <td>{{ result.phobius_percentage }}</td>
+                    <td>{{ result.deeptmhmm_count }}</td>
+                    <td>{{ result.deeptmhmm_regions_str }}</td>
+                    <td>{{ result.deeptmhmm_percentage }}</td>
+                    <td>{{ result.tmbed_count }}</td>
+                    <td>{{ result.tmbed_regions_str }}</td>
+                    <td>{{ result.tmbed_percentage }}</td>
+                    <td>{{ result.topcons_count }}</td>
+                    <td>{{ result.topcons_regions_str }}</td>
+                    <td>{{ result.topcons_percentage }}</td>
                 </tr>
-                <tr class="visualizer-row">
-                    <td colspan="9">
-                        <div class="protein-visualization">
-                            <div class="visualizer-title">Visualization of Transmembrane Domains:</div>
-                            <div class="sequence-info">Protein length: {{ result.sequence_length }} amino acids</div>
-
-                            <!-- UniProt visualization -->
-                            <div class="region-label uniprot-label">UniProt</div>
+                <!-- Unlike batch_results.html, the visualisation is always
+                     shown — "visualizer-row open" is hardcoded rather than
+                     toggled, and there's no expand-indicator/click handler. -->
+                <tr class="visualizer-row open">
+                    <td colspan="16">
+                        <div class="viz-inner">
+                        <div class="protein-visualization" data-accession="{{ result.accession }}">
+                            <div class="sequence-info">Protein length: {{ result.sequence_length }} amino acids<br>Move cursor to predicted
+TM seq to see its aminoacid position and sequence</div>
+                            {% for method_label, method_cls, regions in [
+                                ('UniProt',   'uniprot',   result.transmembrane_regions),
+                                ('Phobius',   'phobius',   result.phobius_regions),
+                                ('DeepTMHMM', 'deeptmhmm', result.deeptmhmm_regions),
+                                ('TMBED',     'tmbed',     result.tmbed_regions),
+                                ('TOPCONS',   'topcons',   result.topcons_regions),
+                            ] %}
+                            <div class="region-label {{ method_cls }}-label">{{ method_label }}</div>
                             <div class="protein-bar">
-                                {% for region in result.transmembrane_regions %}
-                                    <div class="tm-region uniprot-region"
+                                {% for region in regions %}
+                                    {% set pos_label = 'Position ' ~ region[0] ~ '–' ~ region[1] ~ ' (' ~ (region[1] - region[0] + 1) ~ ' aa)' %}
+                                    <div class="tm-region {{ method_cls }}-region"
                                          style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
                                                 width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
-                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
+                                         data-start="{{ region[0] }}" data-end="{{ region[1] }}" data-pos-label="{{ pos_label }}" data-copy-text="{{ pos_label }}"
+                                         title="{{ pos_label }} (click to copy)">
                                     </div>
                                 {% endfor %}
                             </div>
+                            {% endfor %}
 
-                            <!-- Phobius visualization -->
-                            <div class="region-label phobius-label">Phobius</div>
-                            <div class="protein-bar">
-                                {% for region in result.phobius_regions %}
-                                    <div class="tm-region phobius-region"
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
-                                                width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
-                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
-                                    </div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- DeepTMHMM visualization -->
-                            <div class="region-label deeptmhmm-label">DeepTMHMM</div>
-                            <div class="protein-bar">
-                                {% for region in result.deeptmhmm_regions %}
-                                    <div class="tm-region deeptmhmm-region"
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
-                                                width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
-                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
-                                    </div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- TMBED visualization -->
-                            <div class="region-label tmbed-label">TMBED</div>
-                            <div class="protein-bar">
-                                {% for region in result.tmbed_regions %}
-                                    <div class="tm-region tmbed-region"
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
-                                                width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
-                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
-                                    </div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- TOPCONS visualization -->
-                            <div class="region-label topcons-label">TOPCONS</div>
-                            <div class="protein-bar">
-                                {% for region in result.topcons_regions %}
-                                    <div class="tm-region topcons-region"
-                                         style="left: {{ (region[0] / result.sequence_length) * 100 }}%;
-                                                width: {{ ((region[1] - region[0] + 1) / result.sequence_length) * 100 }}%;"
-                                         title="Position {{ region[0]}} - {{ region[1] }} ({{ region[1] - region[0] + 1 }} aa)">
-                                    </div>
-                                {% endfor %}
-                            </div>
+                            <div class="sequence-note">Loading sequence…</div>
+                        </div>
                         </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    <a href="{{ url_for('index') }}">New Search</a>
+    </div>
+
+    <p><a href="{{ url_for('index') }}"><button type="button">New Search</button></a></p>
+
+<script>
+(function() {
+  const tbody = document.getElementById('results-tbody');
+  if (!tbody) return;
+
+  // Sequences are fetched lazily per protein and cached, but — unlike
+  // batch_results.html, where this waits for a row to be expanded —
+  // every row's visualisation is visible from the start here, so all of
+  // them are enriched immediately below.
+  const SEQUENCE_URL_TEMPLATE = '{{ url_for("protein_sequence", accession="__ACC__") }}';
+  const sequenceCache = {};
+
+  function fetchSequence(accession) {
+    if (Object.prototype.hasOwnProperty.call(sequenceCache, accession)) {
+      return Promise.resolve(sequenceCache[accession]);
+    }
+    const url = SEQUENCE_URL_TEMPLATE.replace('__ACC__', encodeURIComponent(accession));
+    return fetch(url)
+      .then(resp => (resp.ok ? resp.json() : null))
+      .then(data => {
+        const seq = (data && data.sequence) ? data.sequence : null;
+        sequenceCache[accession] = seq;
+        return seq;
+      })
+      .catch(() => {
+        sequenceCache[accession] = null;
+        return null;
+      });
+  }
+
+  // Once the sequence arrives, rewrite each region's tooltip to include the
+  // actual residues. If the sequence isn't available the position-only
+  // tooltip rendered by the server simply stays as it is.
+  function enrichRegionsWithSequence(container, accession) {
+    const bars = container.querySelectorAll('.tm-region');
+    const note = container.querySelector('.sequence-note');
+    if (!bars.length) {
+      if (note) note.remove();
+      return;
+    }
+
+    fetchSequence(accession).then(sequence => {
+      if (!sequence) {
+        if (note) note.remove();
+        return;
+      }
+      bars.forEach(bar => {
+        const start = parseInt(bar.dataset.start, 10);
+        const end   = parseInt(bar.dataset.end, 10);
+        if (!start || !end) return;
+        // Region coordinates are 1-based inclusive; slice() is 0-based, end-exclusive.
+        const residues = sequence.slice(start - 1, end);
+        bar.dataset.copyText = bar.dataset.posLabel + '\n' + residues;
+        bar.title = bar.dataset.copyText + '\n(click to copy)';
+      });
+      if (note) {
+        note.textContent = 'Hover any region to see its amino-acid sequence — click a region to copy it.';
+      }
+    });
+  }
+
+  // Clicking a TM-region bar copies its position (and, once loaded, its
+  // amino-acid sequence) to the clipboard — same text the hover tooltip
+  // shows. Briefly flashes the bar so the click has visible feedback.
+  function copyRegionText(bar) {
+    const text = bar.dataset.copyText;
+    if (!text || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      bar.classList.add('copied');
+      setTimeout(() => bar.classList.remove('copied'), 500);
+    }).catch(() => {});
+  }
+
+  tbody.addEventListener('click', (evt) => {
+    const bar = evt.target.closest('.tm-region');
+    if (!bar) return;
+    copyRegionText(bar);
+  });
+
+  tbody.querySelectorAll('.protein-visualization').forEach(container => {
+    enrichRegionsWithSequence(container, container.dataset.accession);
+  });
+})();
+
+function updateStickyHeaderOffsets() {
+  // Measure a first-row th without rowspan, so the rowspan'd "Protein"
+  // cell (which spans both rows) doesn't skew the row-1 height reading.
+  var row1Th = document.querySelector('.batch-results-table thead tr:first-child th:not([rowspan])');
+  if (row1Th) {
+    document.documentElement.style.setProperty('--thead-row1-height', row1Th.offsetHeight + 'px');
+  }
+}
+updateStickyHeaderOffsets();
+window.addEventListener('load', updateStickyHeaderOffsets);
+window.addEventListener('resize', updateStickyHeaderOffsets);
+</script>
 </body>
 </html>

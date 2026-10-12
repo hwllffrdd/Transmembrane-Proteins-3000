@@ -2,19 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Batch Processing - Transmembrane Proteins 3000</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human IMPs — Processing</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <meta http-equiv="refresh" content="2;url={{ url_for('batch_results', batch_id=batch_id) }}">
 </head>
 <body>
-    <h1>Transmembrane Proteins 3000</h1>
-    
-    <div class="processing-status">
-        <h2>Processing Your Batch Request</h2>
+    <h1>Human IMPs</h1>
+
+    <!-- Processing state (shown by default) -->
+    <div id="state-processing" class="processing-status">
+        <h2>Processing your batch request</h2>
         <div class="loader"></div>
-        <p>Please wait while we process your batch of accessions.</p>
-        <p>This page will automatically redirect when processing is complete.</p>
-        <p>Processing {{ total_accessions }} accession{{ "s" if total_accessions != 1 else "" }}...</p>
+        <p>Looking up <strong>{{ total_accessions }}</strong> accession{{ "s" if total_accessions != 1 else "" }} in the local UniProt snapshot and prediction files.</p>
+        <p class="hint">This page checks for completion every 5 seconds.</p>
+        <p class="hint" id="elapsed-text">Elapsed: 0 s</p>
     </div>
+
+    <!-- Error state (hidden until needed) -->
+    <div id="state-error" class="processing-status" style="display:none">
+        <h2>Something went wrong</h2>
+        <p id="error-detail">An unexpected error occurred while processing your batch.</p>
+        <a href="{{ url_for('index') }}"><button type="button">Try again</button></a>
+    </div>
+
+    <script>
+    const STATUS_URL  = "{{ url_for('batch_status', batch_id=batch_id) }}";
+    const RESULT_URL  = "{{ url_for('batch_results', batch_id=batch_id) }}";
+    const POLL_MS     = 5000;   // poll every 5 seconds
+
+    function showError(message) {
+      document.getElementById('state-processing').style.display = 'none';
+      document.getElementById('state-error').style.display = '';
+      if (message) {
+        document.getElementById('error-detail').textContent = message;
+      }
+    }
+
+    {% if error is defined and error %}
+    // Server already signalled an error on page load
+    showError({{ error | tojson }});
+    {% else %}
+    // Start polling
+    const startTime = Date.now();
+    let missCount = 0;             // consecutive 'not_found' responses
+    const MISS_LIMIT = 5;          // ~25 s of grace before giving up
+
+    function updateElapsed() {
+      const s = Math.floor((Date.now() - startTime) / 1000);
+      const m = Math.floor(s / 60), rem = s % 60;
+      document.getElementById('elapsed-text').textContent =
+        m > 0 ? `Elapsed: ${m} min ${rem} s` : `Elapsed: ${s} s`;
+    }
+
+    async function poll() {
+      updateElapsed();
+      try {
+        const res  = await fetch(STATUS_URL);
+        const data = await res.json();
+
+        if (data.status === 'completed') {
+          window.location.href = RESULT_URL;
+          return;
+        }
+
+        if (data.status === 'error') {
+          showError(data.error_message);
+          return;
+        }
+
+        if (data.status === 'not_found') {
+          // Only treat a sustained run of misses as a real failure.
+          missCount += 1;
+          if (missCount >= MISS_LIMIT) {
+            showError('The batch could not be found. It may have expired.');
+            return;
+          }
+          setTimeout(poll, POLL_MS);
+          return;
+        }
+
+        // Still processing — poll again
+        missCount = 0;
+        setTimeout(poll, POLL_MS);
+      } catch (err) {
+        // Network hiccup — keep trying
+        setTimeout(poll, POLL_MS);
+      }
+    }
+
+    // First poll after a short initial delay, then every POLL_MS
+    setTimeout(poll, 3000);
+    setInterval(updateElapsed, 1000);
+    {% endif %}
+    </script>
 </body>
 </html>
