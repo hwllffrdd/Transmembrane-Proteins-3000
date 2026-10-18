@@ -33,15 +33,18 @@ form {
     max-width: 900px;
 }
 
+/* Single / batch search forms. On wider screens each form is a subgrid
+   spanning the same 4 rows (heading, text, field, buttons), so both fields
+   start at the same height even when one text wraps to more lines. On
+   narrow screens the forms simply stack. */
 .search-columns {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 30px;
     margin: 20px 0;
 }
 
 .search-box {
-    flex: 1 1 380px;
     padding: 20px;
     border: 1px solid #ccc;
     background-color: #fff;
@@ -49,6 +52,113 @@ form {
 
 .search-box h2 {
     margin-top: 0;
+}
+
+@media (min-width: 768px) {
+    .search-columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .search-box {
+        display: grid;
+        grid-row: span 4;
+        grid-template-rows: subgrid;
+        row-gap: 0;
+        align-items: start;
+    }
+}
+
+/* Typeahead under the single-search input (suggest.js). The wrapper carries
+   the gap below the field, so the list can sit flush against the input. */
+.suggest-wrap {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.suggest-wrap input[type="text"] {
+    margin-bottom: 0;
+}
+
+.suggest-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 340px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #999;
+    border-top: none;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.suggest-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.suggest-list li + li {
+    border-top: 1px solid #eee;
+}
+
+.suggest-list li.active {
+    background: #f0f0f0;
+}
+
+.suggest-list .sug-gene {
+    flex: 0 0 auto;
+    min-width: 70px;
+    font-weight: bold;
+    color: #333;
+}
+
+.suggest-list .sug-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggest-list .sug-acc {
+    flex: 0 0 auto;
+    font-family: monospace;
+    color: #888;
+}
+
+.suggest-list strong {
+    color: #000;
+}
+
+.file-upload {
+    margin-bottom: 15px;
+}
+
+.file-upload label {
+    font-size: 0.85rem;
+    font-weight: normal;
+    color: #666;
+}
+
+.file-upload input[type="file"] {
+    display: block;
+    max-width: 100%;
+    font-size: 0.85rem;
+}
+
+.batch-error {
+    color: #b02a37;
+    font-size: 0.85rem;
+    margin: 0 0 15px;
 }
 
 .references {
@@ -379,9 +489,14 @@ label {
     display: block;
 }
 
-.prot-acc {
-    color: #000;
+/* Accession link + "(ENTRY_NAME)" share one line */
+.prot-acc-line {
     display: block;
+}
+
+.prot-acc,
+.prot-entry {
+    color: #000;
     font-family: monospace;
 }
 

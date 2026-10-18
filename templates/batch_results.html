@@ -15,9 +15,9 @@
 
         {% if not_found_accessions %}
         <div class="not-found">
-            <h3>Accessions not found:</h3>
+            <h3>Identifiers not found:</h3>
             <p>{{ not_found_accessions|join(", ") }}</p>
-            <p>Only valid & reviewed Uniprot Accessions belonging to the current human proteome are permissible.</p>
+            <p>Only valid & reviewed UniProt accessions or entry names belonging to the current human proteome are permissible.</p>
         </div>
         {% endif %}
 
@@ -62,7 +62,8 @@
         <p class="hint">
             Click any row to expand the transmembrane region visualisation for that protein.<br>
             <b>Counts</b>: Count of transmembrane helices; <b>Regions</b>: aminoacid positions in protein sequences;
-            <b>%seq</b>: percentage of sequence that is within transmembrane regions.
+            <b>%seq</b>: percentage of sequence that is within transmembrane regions.<br>
+            Click <b>Protein</b>, <b>Count</b>, or <b>%seq</b> column headers to sort data.
         </p>
 
         <div class="pagination-bar">

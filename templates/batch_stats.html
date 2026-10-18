@@ -20,7 +20,7 @@
         <button type="button" class="stats-tab active" role="tab" aria-selected="true" data-tab="summary">Summary Statistics</button>
         <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="dist">TM Count Distribution</button>
         <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="count">Proteome Coverage</button>
-        <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="pct">Sequence Coverage</button>
+        <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="pct">Sequence in Membrane</button>
         <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="agree">Method Agreement</button>
         <button type="button" class="stats-tab" role="tab" aria-selected="false" data-tab="cons">Consensus Classification</button>
     </div>
@@ -54,11 +54,12 @@
             This chart shows how many proteins are predicted to have 1, 2, 3, ... TM helices by each method
         </p>
         <p class="chart-note" style="margin-bottom:12px; margin-top:0;">Click any bar representing your dataset for the list of the proteins.<br>
-        Click the legend to remove one or more prediction from the chart.</p>
+        Untick a method in the legend to remove its prediction from the chart.</p>
+        <div class="chart-legend" id="dist-legend"></div>
         <div class="chart-wrapper">
             <canvas id="dist-chart"></canvas>
         </div>
-        <button type="button" class="chart-download-btn" data-chart="dist-chart" data-filename="tm-helix-count-distribution.png">Download PNG</button>
+        <button type="button" class="chart-download-btn" data-chart="dist-chart" data-filename="tm-helix-count-distribution.png" data-export-legend>Download PNG</button>
         <p class="chart-note">Proteins with 0 TM helices are excluded. All proteins with more than 12 predicted TMDs are included in the 12+ category.</p>
         <div class="protein-list-panel" id="dist-protein-panel">
             <div class="protein-list-header">

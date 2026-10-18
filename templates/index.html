@@ -10,27 +10,44 @@
     <h1>Human IMPs</h1>
     <p class="intro">Web app integrating human proteome annotation data from Uniprot<sup>1</sup> with the results of algorithms predicting transmembrane alpha helices (Phobius<sup>2</sup>, DeepTMHMM<sup>3</sup>, TOPCONS<sup>4</sup>, TMBED<sup>5</sup>).</p>
 
+    <!-- Both forms share the grid rows (heading / text / field / buttons),
+         so the fields line up however the texts above them wrap -->
     <div class="search-columns">
-        <div class="search-box">
+        <form method="POST" action="{{ url_for('index') }}" class="search-box">
             <h2>Single Query</h2>
-            <form method="POST" action="{{ url_for('index') }}">
-                <label for="query">Enter your query (protein name, e.g. 'neural cell adhesion molecule', gene name, or UniProt accession).</label>
-                <input type="text" id="query" name="query" required>
-                <input type="hidden" name="search_type" value="single">
+            <label for="query">Enter your query (protein name, gene name, UniProt accession, or entry name).</label>
+            <div class="suggest-wrap">
+                <input type="text" id="query" name="query" required
+                       data-suggest-url="{{ url_for('suggest') }}"
+                       autocomplete="off" spellcheck="false" role="combobox"
+                       aria-autocomplete="list" aria-expanded="false" aria-controls="query-suggestions">
+                <ul id="query-suggestions" class="suggest-list" role="listbox" hidden></ul>
+            </div>
+            <input type="hidden" name="search_type" value="single">
+            <div>
                 <button type="submit">Search</button>
-            </form>
-        </div>
+            </div>
+        </form>
 
-        <div class="search-box">
+        <form method="POST" action="{{ url_for('index') }}" enctype="multipart/form-data"
+              class="search-box" id="batch-form">
             <h2>Batch Search</h2>
-            <form method="POST" action="{{ url_for('index') }}">
-                <label for="batch_query">Enter UniProt accessions (space or line separated).<br>Export to CSV, TSV, generate statistics of the dataset.</label>
-                <textarea id="batch_query" name="batch_query" rows="6" required></textarea>
-                <input type="hidden" name="search_type" value="batch">
+            <label for="batch_query">Enter UniProt accessions or entry names, e.g. P13591 or NCAM1_HUMAN (space or line separated). Export to CSV, TSV, generate statistics of the dataset.</label>
+            <div>
+                <textarea id="batch_query" name="batch_query" rows="6"></textarea>
+                <div class="file-upload">
+                    <label for="batch_file">or upload a file (.txt, .csv, .tsv, .xlsx, .xls); from tables the first column is used</label>
+                    <input type="file" id="batch_file" name="batch_file" accept=".txt,.csv,.tsv,.xlsx,.xls">
+                </div>
+                {% if batch_error %}<p class="batch-error">{{ batch_error }}</p>{% endif %}
+            </div>
+            <input type="hidden" name="search_type" value="batch">
+            <div>
                 <button type="submit">Process Batch</button>
-                <button type="button" class="secondary-button" onclick="document.getElementById('batch_query').value='';">Clear</button>
-            </form>
-        </div>
+                <button type="button" class="secondary-button"
+                        onclick="document.getElementById('batch_query').value=''; document.getElementById('batch_file').value='';">Clear</button>
+            </div>
+        </form>
     </div>
 
     <div class="references">
@@ -47,5 +64,26 @@
         <p><sup>5</sup> Bernhofer M, Rost B. TMbed: transmembrane proteins predicted through
             language model embeddings. BMC Bioinformatics. 2022;23(1):326. doi:<a href="https://dx.doi.org/10.1186/s12859-022-04873-x" target="_blank">10.1186/s12859-022-04873-x</a></p>
     </div>
+
+    <script src="{{ url_for('static', filename='suggest.js') }}"></script>
+
+    <!-- Batch search needs pasted identifiers or a file (either one is enough) -->
+    <script>
+        (function () {
+            const form = document.getElementById('batch-form');
+            const text = document.getElementById('batch_query');
+            const file = document.getElementById('batch_file');
+            const clear = () => text.setCustomValidity('');
+            text.addEventListener('input', clear);
+            file.addEventListener('change', clear);
+            form.addEventListener('submit', function (e) {
+                if (!text.value.trim() && !file.files.length) {
+                    e.preventDefault();
+                    text.setCustomValidity('Enter accessions or entry names, or upload a file.');
+                    text.reportValidity();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

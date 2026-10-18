@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import requests
+import pandas as pd
 from requests.adapters import HTTPAdapter, Retry
 import re
 import os
@@ -7,7 +8,7 @@ import json
 import csv
 import uuid
 import threading
-from io import StringIO
+from io import StringIO, BytesIO
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,7 +26,7 @@ batch_storage_lock = threading.Lock()
 # them directly instead, applying the same parsing rules as that loader.
 
 DATA_FILES = {
-    'phobius':   os.path.join(BASE_DIR, 'phobius.csv'),
+    'phobius':   os.path.join(BASE_DIR, 'phobius.txt'),
     'deeptmhmm': os.path.join(BASE_DIR, 'deeptmhmm.tsv'),
     'tmbed':     os.path.join(BASE_DIR, 'tmbed_combined.txt'),
     'topcons':   os.path.join(BASE_DIR, 'topcons_combined.txt'),
@@ -37,29 +38,34 @@ PREDICTION_METHODS = ['phobius', 'deeptmhmm', 'tmbed', 'topcons']
 
 def _parse_phobius(file_path):
     """
-    Semicolon-delimited CSV.
-    Relevant columns: Accession, TM string
-    TM string format:  o6-23i302-325o   (regions separated by i/o)
+    Phobius long output (phobius -long), one block per protein:
+      ID   sp|<accession>|<entry name>
+      FT   SIGNAL        1     21
+      FT   DOMAIN        1      4       N-REGION.
+      FT   TRANSMEM    169    190
+      FT   DOMAIN      191    201       CYTOPLASMIC.
+      //
+    Only TRANSMEM lines are kept (SIGNAL and DOMAIN lines are not used).
     """
     results = {}
-    with open(file_path, newline='', encoding='utf-8') as fh:
-        reader = csv.DictReader(fh, delimiter=';')
-        for row in reader:
-            accession = (row.get('Accession') or '').strip()
-            if not accession:
+    current = None
+    with open(file_path, encoding='utf-8') as fh:
+        for line in fh:
+            parts = line.split()
+            if not parts:
                 continue
-            regions = results.setdefault(accession, [])
-            tm_string = str(row.get('TM string', '')).strip()
-            # Split on topology-orientation characters i/o, keep coordinate parts
-            for segment in re.split(r'[io]', tm_string):
-                for part in segment.split('/'):
-                    part = part.strip()
-                    if '-' in part:
-                        try:
-                            start, end = map(int, part.split('-'))
-                            regions.append((start, end))
-                        except ValueError:
-                            pass
+            if parts[0] == 'ID' and len(parts) >= 2:
+                # "sp|P13591|NCAM1_HUMAN" -> "P13591"; a bare accession is used as is
+                id_parts = parts[1].split('|')
+                current = (id_parts[1] if len(id_parts) >= 2 else id_parts[0]).strip()
+                results.setdefault(current, [])
+            elif parts[0] == '//':
+                current = None
+            elif current and parts[0] == 'FT' and len(parts) >= 4 and parts[1] == 'TRANSMEM':
+                try:
+                    results[current].append((int(parts[2]), int(parts[3])))
+                except ValueError:
+                    pass
     return results
 
 
@@ -148,7 +154,8 @@ class TMData:
     def __init__(self):
         self._lock = threading.Lock()
         self._loaded = False
-        self.proteins = {}      # accession -> {protein_name, gene_name, sequence_length, sequence, tm_regions}
+        self.proteins = {}      # accession -> {entry_name, protein_name, gene_name, sequence_length, sequence, tm_regions}
+        self.entry_names = {}   # ENTRY_NAME -> accession
         self.predictions = {}   # method -> {accession -> [(start, end), ...]}
 
     def _ensure_loaded(self):
@@ -178,6 +185,7 @@ class TMData:
             proteins = {}
             for acc, entry in _load_uniprot_snapshot(DATA_FILES['uniprot']).items():
                 proteins[acc] = {
+                    'entry_name':      entry.get('entry_name') or None,
                     'protein_name':    entry.get('protein_name') or None,
                     'gene_name':       entry.get('gene_name') or None,
                     'sequence_length': entry.get('sequence_length') or None,
@@ -190,7 +198,7 @@ class TMData:
             for method in PREDICTION_METHODS:
                 for acc in predictions[method]:
                     if acc not in proteins:
-                        proteins[acc] = {'protein_name': None, 'gene_name': None,
+                        proteins[acc] = {'entry_name': None, 'protein_name': None, 'gene_name': None,
                                          'sequence_length': None, 'sequence': None,
                                          'tm_regions': []}
             for acc, protein in proteins.items():
@@ -198,6 +206,8 @@ class TMData:
                     protein['sequence_length'] = tmbed_lengths.get(acc) or topcons_lengths.get(acc)
 
             self.proteins = proteins
+            self.entry_names = {p['entry_name'].upper(): acc
+                                for acc, p in proteins.items() if p['entry_name']}
             self.predictions = predictions
             self._loaded = True
             print(f"Loaded {len(proteins):,} proteins.")
@@ -205,6 +215,16 @@ class TMData:
     def get_protein(self, accession):
         self._ensure_loaded()
         return self.proteins.get(accession)
+
+    def get_accession_by_entry_name(self, entry_name):
+        self._ensure_loaded()
+        return self.entry_names.get(entry_name.upper())
+
+    def named_proteins(self):
+        """(accession, protein) pairs for proteins that came from the UniProt
+        snapshot (i.e. have a protein name) — the ones searches consider."""
+        self._ensure_loaded()
+        return [(acc, p) for acc, p in self.proteins.items() if p['protein_name']]
 
     def get_predictions_for_accessions(self, accessions):
         if not accessions:
@@ -253,6 +273,31 @@ _UNIPROT_ACC_RE = re.compile(
 
 def _is_valid_uniprot_accession(acc):
     return bool(_UNIPROT_ACC_RE.match(acc.upper()))
+
+
+# ── UniProt entry name format validation ──────────────────────────────────────
+# <mnemonic>_<species>, e.g. NCAM1_HUMAN (Swiss-Prot) or A0A087X1C5_HUMAN
+# (TrEMBL). Never overlaps with accessions, which contain no underscore. Any
+# species code is accepted so that e.g. NCAM1_MOUSE is reported as not found
+# rather than misread as a protein name.
+_UNIPROT_ENTRY_NAME_RE = re.compile(r'^[A-Z0-9]{1,10}_[A-Z0-9]{1,5}$')
+
+def _is_uniprot_entry_name(name):
+    return bool(_UNIPROT_ENTRY_NAME_RE.match(name.upper()))
+
+
+def resolve_entry_names(entry_names):
+    """Map UniProt entry names to accessions via the snapshot's entry names.
+
+    Returns {ENTRY_NAME: accession} keyed by the upper-cased entry name (the
+    form UniProt uses); names not in the data are simply absent.
+    """
+    result = {}
+    for name in {n.upper() for n in entry_names}:
+        acc = tm_db.get_accession_by_entry_name(name)
+        if acc:
+            result[name] = acc
+    return result
 
 
 # ── UniProt helpers ───────────────────────────────────────────────────────────
@@ -305,8 +350,14 @@ def get_uniprot_data(query, is_accession=False):
     """Single-query search (used for the interactive single-protein search)."""
     organism_id = "9606"
     reviewed = "true"
+    # Exact identifier lookups skip the name/gene/accession filter below. An
+    # entry name (NCAM1_HUMAN) has to be searched as id:, because a free-text
+    # search for it returns the protein but the filter would then drop it.
+    exact = is_accession or _is_uniprot_entry_name(query.strip())
     if is_accession:
         query_string = f"(accession:{query}) AND (organism_id:{organism_id}) AND (reviewed:{reviewed})"
+    elif exact:
+        query_string = f"(id:{query.strip().upper()}) AND (organism_id:{organism_id}) AND (reviewed:{reviewed})"
     else:
         query_string = f"((organism_id:{organism_id}) AND (reviewed:{reviewed}) AND ({query}))"
 
@@ -323,7 +374,7 @@ def get_uniprot_data(query, is_accession=False):
         acc, name, gene, length, tm_regions = _parse_uniprot_entry(entry)
         feature_info = _build_feature_info(tm_regions, length, bool(entry.get("features")))
 
-        if is_accession or (
+        if exact or (
             query.lower() in name.lower() or
             query.lower() == gene.lower() or
             query.lower() == acc.lower()
@@ -332,11 +383,111 @@ def get_uniprot_data(query, is_accession=False):
                 "name": name,
                 "gene_name": gene,
                 "accession": acc,
+                "entry_name": entry.get("uniProtkbId", ""),
                 "feature_info": feature_info,
                 "sequence_length": length,
                 "transmembrane_regions": tm_regions,
             })
     return results
+
+
+def find_db_accessions(query):
+    """Accessions in the local data matching a single-search query.
+
+    An accession or entry name is an exact lookup. Anything else matches
+    protein names by substring and gene names exactly (both case-insensitive)
+    — the same rules get_uniprot_data() filters UniProt API results by, so
+    both sources answer a query the same way. Only proteins that came from
+    the UniProt snapshot (i.e. have a protein name) are considered. Exact
+    gene-name hits are listed first, then alphabetically by protein name.
+
+    Returns a list of accessions, or None on a data error.
+    """
+    q = query.strip()
+    if not q:
+        return []
+    try:
+        if _is_valid_uniprot_accession(q):
+            protein = tm_db.get_protein(q.upper())
+            return [q.upper()] if protein and protein['protein_name'] else []
+        if _is_uniprot_entry_name(q):
+            acc = tm_db.get_accession_by_entry_name(q)
+            return [acc] if acc else []
+        q_lower = q.lower()
+        matches = []
+        for acc, p in tm_db.named_proteins():
+            gene_exact = (p['gene_name'] or '').lower() == q_lower
+            if gene_exact or q_lower in p['protein_name'].lower():
+                matches.append((not gene_exact, p['protein_name'].lower(), acc))
+    except Exception as e:
+        print(f"Data error in find_db_accessions({q!r}): {e}")
+        return None
+    return [acc for _, _, acc in sorted(matches)]
+
+
+def search_single_query(query):
+    """Single search: local data first, live UniProt API only as a fallback.
+
+    The local data answers in milliseconds; the UniProt API is used only when
+    it has no match, e.g. for a protein missing from the snapshot or a query
+    that only UniProt's full-text search can match.
+    """
+    accessions = find_db_accessions(query)
+    if accessions:
+        results, _ = get_batch_uniprot_data(accessions)
+        if results:
+            order = {acc: i for i, acc in enumerate(accessions)}
+            results.sort(key=lambda r: order.get(r['accession'], len(order)))
+            return results
+    print(f"Single search: no local match for {query!r}, falling back to the UniProt API")
+    return get_uniprot_data(query)
+
+
+SUGGEST_MIN_CHARS = 2
+SUGGEST_LIMIT = 10
+
+
+def get_suggestions(query):
+    """Typeahead suggestions for the single-search field.
+
+    Matches gene names, accessions and entry names by prefix and protein names
+    by substring (all case-insensitive), best matches first: exact
+    identifier/gene hits, then gene prefixes, accession/entry-name prefixes,
+    protein names starting with the text, and finally names merely containing
+    it; shorter names first within each group. Returns [] for short queries
+    or on a data error — suggestions are a convenience, never a hard failure.
+    """
+    q = query.strip().lower()
+    if len(q) < SUGGEST_MIN_CHARS:
+        return []
+    try:
+        ranked = []
+        for acc, p in tm_db.named_proteins():
+            acc_l = acc.lower()
+            entry_l = (p['entry_name'] or '').lower()
+            gene_l = (p['gene_name'] or '').lower()
+            name = p['protein_name']
+            name_l = name.lower()
+            if gene_l == q or acc_l == q or entry_l == q:
+                rank = 0
+            elif gene_l.startswith(q):
+                rank = 1
+            elif acc_l.startswith(q) or entry_l.startswith(q):
+                rank = 2
+            elif name_l.startswith(q):
+                rank = 3
+            elif q in name_l:
+                rank = 4
+            else:
+                continue
+            ranked.append((rank, len(name), name, acc, p))
+    except Exception as e:
+        print(f"Data error in get_suggestions({query!r}): {e}")
+        return []
+    ranked.sort(key=lambda t: t[:4])
+    return [{'accession': acc, 'entry_name': p['entry_name'],
+             'gene_name': p['gene_name'], 'protein_name': p['protein_name']}
+            for _, _, _, acc, p in ranked[:SUGGEST_LIMIT]]
 
 
 def get_batch_uniprot_data(accessions):
@@ -372,6 +523,7 @@ def get_batch_uniprot_data(accessions):
             'name':                  protein['protein_name'] or 'Unknown',
             'gene_name':             protein['gene_name'] or 'Unknown',
             'accession':             acc,
+            'entry_name':            protein['entry_name'] or '',
             'feature_info':          _build_feature_info(tm_regions, sequence_length, True),
             'sequence_length':       sequence_length,
             'transmembrane_regions': tm_regions,
@@ -423,19 +575,42 @@ def format_method_data(method_data, method_name, sequence_length=0):
             'regions': tm_regions, 'regions_str': regions_str, 'percentage': percentage}
 
 
-def process_batch_query(batch_accessions):
-    # Dedupe while preserving the order the user entered accessions in — a
-    # plain set() would scramble it. Results are re-ordered to match this
-    # list at the end, since the lookups below don't preserve it either.
+def process_batch_query(batch_identifiers):
+    # Dedupe (case-insensitively) while preserving the order the user entered
+    # identifiers in — a plain set() would scramble it. Results are re-ordered
+    # to match at the end, since the lookups below don't preserve it either.
     seen = set()
+    identifiers = []
+    for ident in batch_identifiers:
+        ident = ident.strip()
+        if ident and ident.upper() not in seen:
+            seen.add(ident.upper())
+            identifiers.append(ident)
+
+    # Identifiers are accessions (P13591) or entry names (NCAM1_HUMAN). Entry
+    # names are translated to accessions up front so everything below works on
+    # accessions only; an accession and an entry name for the same protein
+    # collapse into one result. Accessions are upper-cased to match the data.
+    entry_name_map = resolve_entry_names(i for i in identifiers if _is_uniprot_entry_name(i))
+    accession_of = {}   # identifier as entered -> accession (None if unresolved)
     accessions = []
-    for acc in batch_accessions:
-        acc = acc.strip()
-        if acc and acc not in seen:
-            seen.add(acc)
+    seen_accessions = set()
+    for ident in identifiers:
+        if _is_uniprot_entry_name(ident):
+            acc = entry_name_map.get(ident.upper())
+        else:
+            acc = ident.upper()
+        accession_of[ident] = acc
+        if acc and acc not in seen_accessions:
+            seen_accessions.add(acc)
             accessions.append(acc)
 
     uniprot_results, not_found_accessions = get_batch_uniprot_data(accessions)
+
+    # Report misses the way the user typed them, in input order.
+    not_found_set = set(not_found_accessions)
+    not_found_identifiers = [ident for ident in identifiers
+                             if accession_of[ident] is None or accession_of[ident] in not_found_set]
     db_predictions = get_database_predictions(accessions)
 
     combined_results = []
@@ -458,6 +633,7 @@ def process_batch_query(batch_accessions):
             'name': uniprot_item['name'],
             'gene_name': uniprot_item['gene_name'],
             'accession': accession,
+            'entry_name': uniprot_item.get('entry_name', ''),
             'sequence_length': sequence_length,
             'transmembrane_regions': uniprot_tm_regions,
             'feature_info': uniprot_item.get('feature_info', ''),
@@ -487,14 +663,11 @@ def process_batch_query(batch_accessions):
         })
 
     # Re-sort combined_results to match the order the user entered
-    # accessions in (matched case-insensitively, since the user's casing may
-    # differ from what's stored in the data files).
-    order_index = {}
-    for i, acc in enumerate(accessions):
-        order_index.setdefault(acc.upper(), i)
-    combined_results.sort(key=lambda r: order_index.get(r['accession'].upper(), len(accessions)))
+    # identifiers in (accessions is already in that order).
+    order_index = {acc: i for i, acc in enumerate(accessions)}
+    combined_results.sort(key=lambda r: order_index.get(r['accession'], len(accessions)))
 
-    return combined_results, not_found_accessions, len(accessions)
+    return combined_results, not_found_identifiers, len(identifiers)
 
 
 def _run_batch_in_background(batch_id, accessions):
@@ -607,8 +780,8 @@ _SINGLE_SEARCH_METHOD_FIELDS = [
 def _build_single_search_summary(query, combined_results):
     """One-line summary shown above the single-search results table.
 
-    A syntactically valid accession means the user was looking up one
-    specific protein, so the phrasing is singular/definite. Anything else is
+    A syntactically valid accession or entry name means the user was looking
+    up one specific protein, so the phrasing is singular/definite. Anything else is
     a name/gene search, which can legitimately match several proteins — for
     those, X counts proteins with at least one method predicting membrane
     (a union across methods, so "up to X" rather than "at least X": X is an
@@ -617,13 +790,15 @@ def _build_single_search_summary(query, combined_results):
     """
     total = len(combined_results)
 
-    if _is_valid_uniprot_accession(query.strip()):
+    query = query.strip()
+    if _is_valid_uniprot_accession(query) or _is_uniprot_entry_name(query):
+        id_kind = 'accession' if _is_valid_uniprot_accession(query) else 'entry name'
         if total == 0:
-            return 'No protein found for this accession.'
+            return f'No protein found for this {id_kind}.'
         methods_predicting = sum(
             1 for field in _SINGLE_SEARCH_METHOD_FIELDS if combined_results[0].get(field, 0) > 0
         )
-        return (f'Your accession is a membrane protein as predicted by '
+        return (f'Your {id_kind} is a membrane protein as predicted by '
                 f'{methods_predicting} of {len(_SINGLE_SEARCH_METHOD_FIELDS)} methods.')
 
     if total == 0:
@@ -774,6 +949,88 @@ def _fix_region_strings(batch_data):
                     result[field] = []
 
 
+# ── Batch input parsing ───────────────────────────────────────────────────────
+
+BATCH_FILE_EXTENSIONS = ('.txt', '.csv', '.tsv', '.xlsx', '.xls')
+
+
+def _first_of_group(token):
+    """Some users paste "protein group" accessions in the format
+    ACCESSION1;ACCESSION2;ACCESSION3 (as some proteomics tools export them)
+    rather than one accession per token. We only support single accessions,
+    so keep just the first member of each group instead of rejecting it."""
+    return token.split(';', 1)[0].strip()
+
+
+def _parse_batch_text(text):
+    """Whitespace-separated identifiers (textarea input or a .txt upload)."""
+    return [t for t in (_first_of_group(tok) for tok in re.split(r'\s+', text)) if t]
+
+
+def _parse_first_column(cells):
+    """Identifiers from the first column of a table (CSV/TSV/Excel).
+
+    The first cell is often a header ("Accession", "Protein IDs", …), but not
+    always, so it is dropped only when it isn't a valid accession or entry
+    name — a header then never shows up among the "not found" identifiers.
+    """
+    values = []
+    for i, cell in enumerate(cells):
+        if cell is None or (isinstance(cell, float) and pd.isna(cell)):
+            continue
+        value = _first_of_group(str(cell))
+        if not value:
+            continue
+        if i == 0 and not (_is_valid_uniprot_accession(value) or _is_uniprot_entry_name(value)):
+            continue
+        values.append(value)
+    return values
+
+
+class BatchFileError(ValueError):
+    """Uploaded batch file can't be used; the message is shown to the user."""
+
+
+def _parse_batch_file(file_storage):
+    """Identifiers from an uploaded .txt, .csv, .tsv, .xlsx or .xls file."""
+    filename = (file_storage.filename or '').lower()
+    ext = os.path.splitext(filename)[1]
+    if ext not in BATCH_FILE_EXTENSIONS:
+        raise BatchFileError(f"Unsupported file type. Please upload one of: "
+                             f"{', '.join(BATCH_FILE_EXTENSIONS)}.")
+    data = file_storage.read()
+
+    if ext in ('.xlsx', '.xls'):
+        try:
+            # First sheet only; dtype=str keeps accessions such as "P01234" or
+            # numeric-looking cells from being mangled into numbers.
+            df = pd.read_excel(BytesIO(data), sheet_name=0, header=None, dtype=str,
+                               engine='openpyxl' if ext == '.xlsx' else 'xlrd')
+        except Exception as e:
+            print(f"Could not read uploaded Excel file {filename!r}: {e}")
+            raise BatchFileError("The Excel file could not be read. Please check that it "
+                                 "is a valid .xlsx/.xls file.")
+        return _parse_first_column(df.iloc[:, 0].tolist()) if df.shape[1] else []
+
+    try:
+        text = data.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        text = data.decode('latin-1')
+
+    if ext == '.txt':
+        return _parse_batch_text(text)
+
+    # .csv / .tsv — delimiter is sniffed, since "CSV" exports often use ";"
+    # or tabs. A ";"-delimited file still yields the first accession of a
+    # group, matching _first_of_group() for ","-delimited ones.
+    lines = text.splitlines()
+    try:
+        dialect = csv.Sniffer().sniff('\n'.join(lines[:50]), delimiters=',;\t')
+    except csv.Error:
+        dialect = csv.excel_tab if ext == '.tsv' else csv.excel   # single-column file
+    return _parse_first_column(row[0] if row else None for row in csv.reader(lines, dialect))
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
@@ -785,18 +1042,21 @@ def index():
         search_type = request.form.get('search_type', 'single')
 
         if search_type == 'batch':
-            batch_query = request.form.get('batch_query', '').strip()
-            if not batch_query:
+            # Identifiers come from the textarea, an uploaded file, or both
+            # (textarea first); process_batch_query() dedupes the combination.
+            accessions = _parse_batch_text(request.form.get('batch_query', ''))
+            batch_file = request.files.get('batch_file')
+            if batch_file and batch_file.filename:
+                try:
+                    accessions += _parse_batch_file(batch_file)
+                except BatchFileError as e:
+                    return render_template('index.html', batch_error=str(e))
+                if not accessions:
+                    return render_template('index.html',
+                                           batch_error='No identifiers were found in the uploaded file.')
+            if not accessions:
                 return redirect(url_for('index'))
 
-            accessions = re.split(r'[\s\n\r]+', batch_query)
-            # Some users paste "protein group" accessions in the format
-            # ACCESSION1;ACCESSION2;ACCESSION3 (as some proteomics tools
-            # export them) rather than one accession per token. We only
-            # support single accessions, so keep just the first member of
-            # each group instead of rejecting the whole line.
-            accessions = [a.split(';', 1)[0] for a in accessions]
-            accessions = [a for a in accessions if a]
             batch_id = str(uuid.uuid4())
 
             initial_state = {
@@ -829,7 +1089,7 @@ def index():
                                    total_accessions=len(accessions))
 
         query = request.form['query']
-        uniprot_results = get_uniprot_data(query)
+        uniprot_results = search_single_query(query)
         combined_results = get_single_search_predictions(uniprot_results)
         query_summary = _build_single_search_summary(query, combined_results)
         return render_template('results.html', results=combined_results, query=query,
@@ -903,6 +1163,12 @@ def export_batch(batch_id):
         'Content-Type': f'{mimetype}; charset=utf-8',
         'Content-Disposition': f'attachment; filename="{filename}"'
     }
+
+
+@app.route('/suggest')
+def suggest():
+    """JSON typeahead suggestions for the single-search field on index.html."""
+    return jsonify(get_suggestions(request.args.get('q', '')))
 
 
 @app.route('/sequence/<accession>')

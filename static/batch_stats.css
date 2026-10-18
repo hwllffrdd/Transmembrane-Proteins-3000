@@ -70,7 +70,11 @@ h1 {
    6 panels regardless of which tab is active; a display:none ancestor
    at creation time leaves Chart.js's canvas permanently sized at 0x0.
    Absolute-positioning instead keeps a real, measurable box so every
-   chart gets correct dimensions from the moment it's built. */
+   chart gets correct dimensions from the moment it's built.
+   height:0 + overflow:hidden stops a hidden panel that is taller than the
+   active one from stretching the page's scroll height (which left blank
+   space below short tabs). Its contents keep their real size — the chart
+   containers have fixed heights — they're just clipped. */
 .stats-tab-panels { position: relative; }
 
 .tab-panel-hidden {
@@ -78,6 +82,8 @@ h1 {
     top: 0;
     left: 0;
     width: 100%;
+    height: 0;
+    overflow: hidden;
     box-sizing: border-box;
     visibility: hidden;
     pointer-events: none;
@@ -174,6 +180,19 @@ h1 {
     height: 14px;
     border-radius: 3px;
     flex-shrink: 0;
+}
+
+/* Legend entries that toggle a dataset: checkbox, swatch, name */
+.chart-legend-toggle {
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.chart-legend-toggle input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+    accent-color: #333;
 }
 
 /* ── Pie layout ────────────────────────────────────────────────────────── */

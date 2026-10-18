@@ -387,7 +387,7 @@ const distLabels=[];
 for(let i=1;i<=MAX_CAT;i++) distLabels.push(String(i));
 distLabels.push(`${MAX_CAT}+`);
 
-new Chart(document.getElementById('dist-chart'), {
+const distChart=new Chart(document.getElementById('dist-chart'), {
   type:'bar',
   data:{ labels:distLabels, datasets:METHODS.map(m=>{
     const c=RAW.map(r=>getCount(r,m)), d=[];
@@ -397,7 +397,10 @@ new Chart(document.getElementById('dist-chart'), {
   })},
   options:{
     responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top'},tooltip:{callbacks:{
+    // On screen the legend is the HTML checkbox list (#dist-legend) built
+    // below; this canvas legend is switched on only while exporting a PNG
+    // (see data-export-legend), listing just the methods currently shown.
+    plugins:{legend:{display:false,position:'top',labels:{filter:item=>!item.hidden}},tooltip:{callbacks:{
       title:ctx=>`${ctx[0].label} TM helix${ctx[0].label==='1'?'':'es'}`,
       label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y} protein${ctx.parsed.y!==1?'s':''}`,
     }}},
@@ -435,6 +438,37 @@ new Chart(document.getElementById('dist-chart'), {
   }}]
 });
 
+// Checkbox legend: one entry per method, ticked = shown in the chart
+(function(){
+  const legend=document.getElementById('dist-legend');
+  distChart.data.datasets.forEach((ds,i)=>{
+    const item=document.createElement('label');
+    item.className='chart-legend-item chart-legend-toggle';
+    item.innerHTML=`<input type="checkbox" checked>`+
+      `<span class="chart-legend-swatch" style="border:1px solid ${ds.borderColor}; background:${ds.backgroundColor};"></span>`+
+      `<span>${escapeHtml(ds.label)}</span>`;
+    item.querySelector('input').addEventListener('change',e=>{
+      distChart.setDatasetVisibility(i,e.target.checked);
+      distChart.update();
+    });
+    legend.appendChild(item);
+  });
+})();
+
+// The toggled charts below switch the y axis between absolute counts and
+// percentages, whose tick labels differ in width ("1,250" vs "12.5%"). Chart.js
+// sizes the axis to its labels, so every toggle nudged the plot area (and the
+// bars) sideways. This afterFit hook pins the axis to the widest width seen so
+// far; each chart's setMode() is run through both modes at creation, so the
+// width is settled before the user ever clicks a toggle.
+function stableYAxisWidth() {
+  let maxWidth = 0;
+  return scale => {
+    maxWidth = Math.max(maxWidth, scale.width);
+    scale.width = maxWidth;
+  };
+}
+
 // 3+4 · TM helix count — unified toggled chart
 (function(){
   const absDs  = datasetCountAvg.map(v=>+v.toFixed(2));
@@ -458,7 +492,7 @@ new Chart(document.getElementById('dist-chart'), {
       }}},
       scales:{
         x:{title:{display:true,text:'Number of Transmembrane Helices',font:{weight:'bold'}},grid:{display:false}},
-        y:{title:{display:true,text:'Number of Proteins (avg across methods)',font:{weight:'bold'}},beginAtZero:true,ticks:{precision:1},grid:{color:'rgba(0,0,0,0.06)'}},
+        y:{title:{display:true,text:'Number of Proteins (avg across methods)',font:{weight:'bold'}},beginAtZero:true,ticks:{precision:1},grid:{color:'rgba(0,0,0,0.06)'},afterFit:stableYAxisWidth()},
       },
       onHover(evt, elements) {
         evt.native.target.style.cursor = (elements.length && elements[0].datasetIndex === 0) ? 'pointer' : 'default';
@@ -527,7 +561,7 @@ new Chart(document.getElementById('dist-chart'), {
   }
   btnA.addEventListener('click',()=>setMode(true));
   btnF.addEventListener('click',()=>setMode(false));
-  setMode(true);
+  setMode(false); setMode(true);   // lay out both modes once so stableYAxisWidth() knows the widest axis
 })();
 
 // 5+6 · % sequence coverage — unified toggled chart
@@ -557,7 +591,7 @@ new Chart(document.getElementById('dist-chart'), {
       }}},
       scales:{
         x:{title:{display:true,text:'% of sequence occupied by TM helices',font:{weight:'bold'}},ticks:{maxRotation:45,minRotation:45},grid:{display:false}},
-        y:{title:{display:true,text:'Number of Proteins (avg across methods)',font:{weight:'bold'}},beginAtZero:true,ticks:{precision:1},grid:{color:'rgba(0,0,0,0.06)'}},
+        y:{title:{display:true,text:'Number of Proteins (avg across methods)',font:{weight:'bold'}},beginAtZero:true,ticks:{precision:1},grid:{color:'rgba(0,0,0,0.06)'},afterFit:stableYAxisWidth()},
       },
       onHover(evt, elements) {
         evt.native.target.style.cursor = (elements.length && elements[0].datasetIndex === 0) ? 'pointer' : 'default';
@@ -624,7 +658,7 @@ new Chart(document.getElementById('dist-chart'), {
   }
   btnA.addEventListener('click',()=>setMode(true));
   btnF.addEventListener('click',()=>setMode(false));
-  setMode(true);
+  setMode(false); setMode(true);   // lay out both modes once so stableYAxisWidth() knows the widest axis
 })();
 
 // 7 · Agreement pie + panel
@@ -635,8 +669,12 @@ const proteinAgreeLevel=RAW.map(r=>{
 const nTotal=RAW.length;
 const AGREE_LABELS=['1 method','2 methods','3 methods','4 methods','5 methods (all)'];
 const AGREE_COLORS=['#e74c3c','#e67e22','#f39c12','#2ecc71','#27ae60'];
+// The pie (and so every percentage in this section) covers only proteins that
+// at least one method predicts as membrane; proteins no method classifies are
+// listed as a plain count in the summary box.
 const agreeData=agreeCounts.slice(1), nInPie=agreeData.reduce((a,b)=>a+b,0);
 const agreeDisplayData=inflateSmallPieSlices(agreeData);
+const pctOfInPie=v=>nInPie>0?(v/nInPie*100).toFixed(1):'0.0';
 
 new Chart(document.getElementById('agreement-pie'),{
   type:'pie',
@@ -644,7 +682,7 @@ new Chart(document.getElementById('agreement-pie'),{
   options:{responsive:true,maintainAspectRatio:false,
     plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
       const v=agreeData[ctx.dataIndex];
-      return ` ${v} protein${v!==1?'s':''} (${nTotal>0?(v/nTotal*100).toFixed(1):'0.0'}% of all)`;
+      return ` ${v} protein${v!==1?'s':''} (${pctOfInPie(v)}%)`;
     }}}},
     onClick(evt,elements){
       if(!elements.length) return;
@@ -659,20 +697,20 @@ new Chart(document.getElementById('agreement-pie'),{
 
 const agreeLegDiv=document.getElementById('agreement-legend');
 AGREE_LABELS.forEach((lbl,i)=>{
-  const cnt=agreeData[i],pct=nTotal>0?(cnt/nTotal*100).toFixed(1):'0.0';
+  const cnt=agreeData[i],pct=pctOfInPie(cnt);
   const row=document.createElement('div');row.className='stat-row';
   row.innerHTML=`<span><span class="legend-dot" style="background:${AGREE_COLORS[i]}"></span>${lbl}</span><span>${cnt} (${pct}%)</span>`;
   agreeLegDiv.appendChild(row);
 });
-const aL1=agreeCounts.slice(1).reduce((a,b)=>a+b,0),aL3=agreeCounts.slice(3).reduce((a,b)=>a+b,0),
+const aL3=agreeCounts.slice(3).reduce((a,b)=>a+b,0),
       aL4=agreeCounts.slice(4).reduce((a,b)=>a+b,0),aA5=agreeCounts[5];
 document.getElementById('agreement-stats').innerHTML=`
   <div class="stat-row"><span>Total proteins</span><span>${nTotal}</span></div>
   <div class="stat-row"><span>Not classified by any method</span><span>${agreeCounts[0]}</span></div>
-  <div class="stat-row"><span>≥1 method</span><span>${aL1} (${(aL1/nTotal*100).toFixed(1)}%)</span></div>
-  <div class="stat-row"><span>≥3 methods (majority)</span><span>${aL3} (${(aL3/nTotal*100).toFixed(1)}%)</span></div>
-  <div class="stat-row"><span>≥4 methods (strong)</span><span>${aL4} (${(aL4/nTotal*100).toFixed(1)}%)</span></div>
-  <div class="stat-row"><span>All 5 methods</span><span>${aA5} (${(aA5/nTotal*100).toFixed(1)}%)</span></div>`;
+  <div class="stat-row"><span>Membrane proteins (≥1 method)</span><span>${nInPie}</span></div>
+  <div class="stat-row"><span>≥3 methods (majority)</span><span>${aL3} (${pctOfInPie(aL3)}%)</span></div>
+  <div class="stat-row"><span>≥4 methods (strong)</span><span>${aL4} (${pctOfInPie(aL4)}%)</span></div>
+  <div class="stat-row"><span>All 5 methods</span><span>${aA5} (${pctOfInPie(aA5)}%)</span></div>`;
 
 // 8 · Consensus pie + panel
 const CONS_ALL_LABELS=['Full Consensus','High Confidence','Moderate Confidence','Low Confidence','No Consensus'];
@@ -766,8 +804,16 @@ document.querySelectorAll('.chart-download-btn').forEach(btn => {
     const canvas = document.getElementById(btn.dataset.chart);
     const chart = canvas && Chart.getChart(canvas);
     if (!chart) return;
+    // Charts whose on-screen legend is HTML (outside the canvas) get their
+    // canvas legend drawn just for the export, so the PNG still says which
+    // colour is which. update('none') redraws synchronously — provided no
+    // animation is still running (e.g. right after toggling a checkbox),
+    // hence stop() first — so the page never visibly shows the temporary legend.
+    const exportLegend = 'exportLegend' in btn.dataset;
+    if (exportLegend) { chart.stop(); chart.options.plugins.legend.display = true; chart.update('none'); }
     const link = document.createElement('a');
     link.href = chart.toBase64Image('image/png', 1);
+    if (exportLegend) { chart.options.plugins.legend.display = false; chart.update('none'); }
     link.download = btn.dataset.filename || 'chart.png';
     document.body.appendChild(link);
     link.click();

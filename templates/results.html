@@ -12,8 +12,8 @@
     <p id="query-summary">{{ query_summary }}</p>
 
     <p class="hint">
-        Counts: Count of transmembrane helices; Regions: aminoacid positions in protein sequences;
-        %seq: percentage of sequence that is within transmembrane regions.
+        <b>Counts</b>: Count of transmembrane helices; <b>Regions</b>: aminoacid positions in protein sequences;
+        <b>%seq</b>: percentage of sequence that is within transmembrane regions.
     </p>
 
     <div class="batch-results-table-wrapper">
@@ -50,7 +50,10 @@
                     <td class="protein-identity">
                         <a class="prot-name" href="{{ uniprot_url }}" target="_blank" rel="noopener noreferrer">{{ result.name }}</a>
                         <span class="prot-gene">{{ result.gene_name }}</span>
-                        <a class="prot-acc" href="{{ uniprot_url }}" target="_blank" rel="noopener noreferrer">{{ result.accession }}</a>
+                        <span class="prot-acc-line">
+                            <a class="prot-acc" href="{{ uniprot_url }}" target="_blank" rel="noopener noreferrer">{{ result.accession }}</a>
+                            {%- if result.entry_name %} <span class="prot-entry">({{ result.entry_name }})</span>{% endif %}
+                        </span>
                     </td>
                     <td>{{ result.uniprot_count }}</td>
                     <td>{{ result.uniprot_regions }}</td>
